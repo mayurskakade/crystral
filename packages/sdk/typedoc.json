@@ -1,0 +1,14 @@
+{
+  "entryPoints": ["src/index.ts"],
+  "out": "docs/api",
+  "name": "@crystral/sdk",
+  "readme": "README.md",
+  "includeVersion": true,
+  "categorizeByGroup": true,
+  "sort": ["source-order"],
+  "hideGenerator": true,
+  "groupOrder": ["Classes", "Interfaces", "Type Aliases", "Functions", "Variables"],
+  "navigationLinks": {
+    "GitHub": "https://github.com/dnyantra/crystral"
+  }
+}
