@@ -1,14 +1,24 @@
-# @crystral/core
+# @crystralai/core
 
 Core runtime engine for Crystral - a local-first AI agent framework for developers.
 
 ## Installation
 
 ```bash
-npm install @crystral/core
+npm install @crystralai/core
 # or
-pnpm add @crystral/core
+pnpm add @crystralai/core
 ```
+
+## Prerequisites
+
+`@crystralai/core` depends on `better-sqlite3`, which includes a native Node.js addon. It requires compilation tools at install time:
+
+- **macOS**: Xcode Command Line Tools (`xcode-select --install`)
+- **Linux**: `build-essential` and `python3`
+- **Windows**: `windows-build-tools` (`npm install --global windows-build-tools`)
+
+Node.js ≥ 18 is required.
 
 ## Features
 
@@ -24,7 +34,7 @@ pnpm add @crystral/core
 ## Quick Start
 
 ```typescript
-import { createAgentRunner, loadAgentConfig } from '@crystral/core';
+import { createAgentRunner, loadAgentConfig } from '@crystralai/core';
 
 // Load agent from YAML
 const config = loadAgentConfig('my-agent');
@@ -48,7 +58,7 @@ import {
   loadToolConfig,
   loadProjectConfig,
   loadRAGCollectionConfig 
-} from '@crystral/core';
+} from '@crystralai/core';
 
 const agentConfig = loadAgentConfig('agent-name');
 const toolConfig = loadToolConfig('tool-name');
@@ -59,7 +69,7 @@ const ragConfig = loadRAGCollectionConfig('collection-name');
 ### Agent Runner
 
 ```typescript
-import { createAgentRunner } from '@crystral/core';
+import { createAgentRunner } from '@crystralai/core';
 
 const runner = createAgentRunner(agentConfig);
 
@@ -80,7 +90,7 @@ const result2 = await runner.run('Follow-up message', {
 ### Storage
 
 ```typescript
-import { SQLiteStorage } from '@crystral/core';
+import { SQLiteStorage } from '@crystralai/core';
 
 const storage = SQLiteStorage.getInstance();
 
@@ -96,7 +106,7 @@ const results = storage.searchRAG('collection', embedding, 5);
 ### Providers
 
 ```typescript
-import { createProvider, resolveApiKey } from '@crystral/core';
+import { createProvider, resolveApiKey } from '@crystralai/core';
 
 const apiKey = resolveApiKey('openai');
 const provider = createProvider('openai', apiKey);
@@ -120,7 +130,7 @@ API keys are resolved in order:
 3. Global credentials file (`~/.crystral/credentials`)
 
 ```typescript
-import { resolveApiKey, saveGlobalCredential } from '@crystral/core';
+import { resolveApiKey, saveGlobalCredential } from '@crystralai/core';
 
 // Get API key
 const key = resolveApiKey('openai');
@@ -132,7 +142,7 @@ saveGlobalCredential('openai', 'sk-...');
 ### Workflow Engine
 
 ```typescript
-import { WorkflowEngine, loadWorkflowConfig } from '@crystral/core';
+import { WorkflowEngine, loadWorkflowConfig } from '@crystralai/core';
 
 // Load and run a workflow
 const config = loadWorkflowConfig('content-pipeline');
@@ -146,7 +156,7 @@ console.log(result.agentResults); // per-agent call stats
 ### MCP Client
 
 ```typescript
-import { MCPClientManager } from '@crystral/core';
+import { MCPClientManager } from '@crystralai/core';
 
 const manager = new MCPClientManager();
 await manager.connectAll([

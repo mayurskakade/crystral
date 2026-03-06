@@ -65,7 +65,7 @@ context:
 ### 3. Run the workflow
 
 ```typescript
-import { Crystral } from '@crystral/sdk';
+import { Crystral } from '@crystralai/sdk';
 
 const client = new Crystral();
 const workflow = client.loadWorkflow('content-pipeline');

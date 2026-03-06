@@ -5,7 +5,7 @@ import {
   loadAgentConfig,
   createAgentRunner,
   runTestSuite,
-} from '@crystral/core';
+} from '@crystralai/core';
 
 export function createTestsRouter(cwd: string): Hono {
   const app = new Hono();

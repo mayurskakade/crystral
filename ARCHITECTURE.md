@@ -492,18 +492,18 @@ export class Workflow {
   run(task: string, options?: SDKWorkflowRunOptions): Promise<SDKWorkflowRunResult>
 }
 
-// Re-exports from @crystral/core
+// Re-exports from @crystralai/core
 export type {
   AgentConfig, ToolConfig, AgentToolConfig, MCPServerConfig, WorkflowConfig,
   RAGCollectionConfig, Message, Session, InferenceLog,
   AgentDelegationEvent, AgentDelegationResultEvent,
-} from '@crystral/core'
+} from '@crystralai/core'
 
 export {
   CrystralError, AgentNotFoundError, ToolNotFoundError, ToolExecutionError,
   ProviderError, RateLimitError, CredentialNotFoundError, ValidationError,
   CircularDelegationError,
-} from '@crystral/core'
+} from '@crystralai/core'
 ```
 
 ---

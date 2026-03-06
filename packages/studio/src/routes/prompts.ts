@@ -6,8 +6,8 @@ import {
   loadPromptTemplate,
   writePromptTemplate,
   findProjectRoot,
-} from '@crystral/core';
-import type { PromptTemplateConfig } from '@crystral/core';
+} from '@crystralai/core';
+import type { PromptTemplateConfig } from '@crystralai/core';
 
 export function createPromptsRouter(cwd: string): Hono {
   const app = new Hono();

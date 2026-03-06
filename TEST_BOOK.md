@@ -1074,7 +1074,7 @@ pnpm -r typecheck
 pnpm -r build
 
 # Run a specific test file (if vitest/jest configured)
-pnpm --filter @crystral/core test -- --grep "output parser"
+pnpm --filter @crystralai/core test -- --grep "output parser"
 ```
 
 ### Manual Verification
@@ -1143,7 +1143,7 @@ logging:
 ### SDK Smoke Test
 
 ```typescript
-import { Crystral } from '@crystral/sdk';
+import { Crystral } from '@crystralai/sdk';
 
 const client = new Crystral({ cwd: './test-project' });
 

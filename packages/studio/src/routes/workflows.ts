@@ -3,8 +3,8 @@ import {
   listWorkflows,
   loadWorkflowConfig,
   WorkflowEngine,
-} from '@crystral/core';
-import type { WorkflowRunOptions } from '@crystral/core';
+} from '@crystralai/core';
+import type { WorkflowRunOptions } from '@crystralai/core';
 
 export function createWorkflowsRouter(cwd: string): Hono {
   const app = new Hono();

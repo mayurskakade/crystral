@@ -1,7 +1,7 @@
 {
-  "name": "@crystralai/studio",
-  "version": "0.5.0",
-  "description": "Local development dashboard for Crystral - visual agent interaction, session browsing, and log viewing",
+  "name": "@crystralai/client",
+  "version": "0.1.0",
+  "description": "Universal client-side SDK for Crystral — browser, React Native, Electron, Edge. Zero Node.js dependencies.",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -26,6 +26,7 @@
   "scripts": {
     "build": "tsup src/index.ts --format esm,cjs --dts --clean",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run --config vitest.config.ts",
     "clean": "rm -rf dist",
     "prepack": "cp ../../LICENSE ./LICENSE"
   },
@@ -33,35 +34,35 @@
     "ai",
     "agent",
     "llm",
-    "studio",
-    "dashboard",
-    "local-first"
+    "browser",
+    "react-native",
+    "electron",
+    "client",
+    "byok",
+    "openai",
+    "anthropic",
+    "groq",
+    "google",
+    "together"
   ],
   "author": "Mayur Kakade <mskakade111@gmail.com>",
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/mayurskakade/crystral.git",
-    "directory": "packages/studio"
+    "directory": "packages/client"
   },
   "bugs": {
     "url": "https://github.com/mayurskakade/crystral/issues"
   },
   "homepage": "https://github.com/mayurskakade/crystral#readme",
-  "dependencies": {
-    "@crystralai/core": "workspace:*",
-    "@hono/node-server": "^1.14.0",
-    "hono": "^4.7.0",
-    "js-yaml": "^4.1.1"
-  },
-  "devDependencies": {
-    "@types/js-yaml": "^4.0.9",
-    "@types/node": "^20.14.0",
-    "tsup": "^8.5.1",
-    "typescript": "^5.8.2"
-  },
   "engines": {
     "node": ">=18.0.0"
+  },
+  "devDependencies": {
+    "tsup": "^8.5.1",
+    "typescript": "^5.8.2",
+    "vitest": "^2.0.0"
   },
   "publishConfig": {
     "access": "public"

@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { validateProject } from '@crystral/core';
+import { validateProject } from '@crystralai/core';
 
 export function createValidateRouter(cwd: string): Hono {
   const app = new Hono();

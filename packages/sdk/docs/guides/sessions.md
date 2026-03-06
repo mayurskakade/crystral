@@ -20,7 +20,7 @@ You don't need to create a session explicitly.  The first `run()` call
 automatically creates one and returns its ID:
 
 ```typescript
-import { Crystral } from '@crystral/sdk';
+import { Crystral } from '@crystralai/sdk';
 
 const client = new Crystral();
 

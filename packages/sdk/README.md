@@ -1,11 +1,11 @@
-# @crystral/sdk
+# @crystralai/sdk
 
-[![npm version](https://img.shields.io/npm/v/@crystral/sdk?style=flat-square)](https://www.npmjs.com/package/@crystral/sdk)
+[![npm version](https://img.shields.io/npm/v/@crystralai/sdk?style=flat-square)](https://www.npmjs.com/package/@crystralai/sdk)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](https://opensource.org/licenses/MIT)
 [![Node.js: ≥18](https://img.shields.io/badge/Node.js-%E2%89%A518-brightgreen?style=flat-square)](https://nodejs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5%2B-blue?style=flat-square)](https://www.typescriptlang.org)
 
-**TypeScript SDK for [Crystral](https://github.com/dnyantra/crystral)** — a local-first AI agent framework that lets you define agents in YAML, connect them to any LLM provider, equip them with tools, and chat with them in code.
+**TypeScript SDK for [Crystral](https://github.com/mayurskakade/crystral)** — a local-first AI agent framework that lets you define agents in YAML, connect them to any LLM provider, equip them with tools, and chat with them in code.
 
 **Key differentiators:**
 - **File-based agents** — define agents in YAML, not code
@@ -45,13 +45,13 @@
 
 ```bash
 # npm
-npm install @crystral/sdk
+npm install @crystralai/sdk
 
 # pnpm
-pnpm add @crystral/sdk
+pnpm add @crystralai/sdk
 
 # yarn
-yarn add @crystral/sdk
+yarn add @crystralai/sdk
 ```
 
 ---
@@ -75,7 +75,7 @@ my-project/
 ## Quick Start
 
 ```typescript
-import { Crystral } from '@crystral/sdk';
+import { Crystral } from '@crystralai/sdk';
 
 const client = new Crystral();
 const result = await client.run('assistant', 'What is the capital of France?');
@@ -341,7 +341,7 @@ const result = await client.run('orchestrator', 'Analyze this dataset', {
 CrystalAI tracks the agent call stack and throws `CircularDelegationError` if a delegation would create a cycle (e.g. A → B → A):
 
 ```typescript
-import { CircularDelegationError } from '@crystral/sdk';
+import { CircularDelegationError } from '@crystralai/sdk';
 
 try {
   await client.run('agent-a', 'Do something');
@@ -412,7 +412,7 @@ import {
   ToolExecutionError,
   ValidationError,
   CircularDelegationError,
-} from '@crystral/sdk';
+} from '@crystralai/sdk';
 
 try {
   const result = await client.run('my-agent', 'Hello');
@@ -519,4 +519,4 @@ pnpm run docs
 
 ## License
 
-MIT © [dnyantra](https://github.com/dnyantra)
+MIT © [Mayur Kakade](https://github.com/mayurskakade)

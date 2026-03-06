@@ -10,7 +10,7 @@ response as it is generated rather than waiting for the full completion.
 Set `stream: true` in `RunOptions` and provide an `onToken` callback:
 
 ```typescript
-import { Crystral } from '@crystral/sdk';
+import { Crystral } from '@crystralai/sdk';
 
 const client = new Crystral();
 

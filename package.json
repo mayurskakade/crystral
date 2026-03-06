@@ -5,11 +5,10 @@
   "description": "Local-first AI agent framework for developers",
   "scripts": {
     "build": "pnpm -r build",
-    "build:core": "pnpm --filter @crystalai/core build",
-    "build:cli": "pnpm --filter @crystalai/cli build",
-    "build:sdk": "pnpm --filter @crystalai/sdk build",
-    "build:studio": "pnpm --filter @crystalai/studio build",
-    "dev": "pnpm --filter @crystalai/core dev",
+    "build:core": "pnpm --filter @crystralai/core build",
+    "build:sdk": "pnpm --filter @crystralai/sdk build",
+    "build:studio": "pnpm --filter @crystralai/studio build",
+    "dev": "pnpm --filter @crystralai/core dev",
     "test": "pnpm -r test",
     "lint": "pnpm -r lint",
     "clean": "pnpm -r clean",
@@ -24,8 +23,12 @@
     "rag",
     "local-first"
   ],
-  "author": "",
+  "author": "Mayur Kakade <mskakade111@gmail.com>",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mayurskakade/crystral.git"
+  },
   "engines": {
     "node": ">=18.0.0"
   },

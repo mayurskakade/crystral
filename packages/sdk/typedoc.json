@@ -1,7 +1,7 @@
 {
   "entryPoints": ["src/index.ts"],
   "out": "docs/api",
-  "name": "@crystral/sdk",
+  "name": "@crystralai/sdk",
   "readme": "README.md",
   "includeVersion": true,
   "categorizeByGroup": true,

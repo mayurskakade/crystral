@@ -1,6 +1,6 @@
 # Error Handling
 
-All errors thrown by `@crystral/sdk` extend the base `CrystralError` class and
+All errors thrown by `@crystralai/sdk` extend the base `CrystralError` class and
 carry a machine-readable `code` string property.
 
 ---
@@ -25,7 +25,7 @@ Error
 ## Catching All Crystral Errors
 
 ```typescript
-import { CrystralError } from '@crystral/sdk';
+import { CrystralError } from '@crystralai/sdk';
 
 try {
   await client.run('my-agent', 'Hello');
@@ -54,7 +54,7 @@ try {
 **Resolution:** Verify the agent YAML exists at `<cwd>/agents/<name>.yaml`.
 
 ```typescript
-import { AgentNotFoundError } from '@crystral/sdk';
+import { AgentNotFoundError } from '@crystralai/sdk';
 
 try {
   const agent = client.loadAgent('typo-agent');
@@ -79,7 +79,7 @@ try {
 **Resolution:** Check the YAML against the [Agent YAML Reference](../README.md#agent-yaml-reference).
 
 ```typescript
-import { ValidationError } from '@crystral/sdk';
+import { ValidationError } from '@crystralai/sdk';
 
 try {
   const agent = client.loadAgent('bad-config');
@@ -108,7 +108,7 @@ try {
 3. `~/.crystral/credentials` global file
 
 ```typescript
-import { CredentialNotFoundError } from '@crystral/sdk';
+import { CredentialNotFoundError } from '@crystralai/sdk';
 
 try {
   await agent.run('Hello');
@@ -131,7 +131,7 @@ try {
 **`code`:** Provider-specific string (e.g. `"invalid_api_key"`, `"model_not_found"`)
 
 ```typescript
-import { ProviderError } from '@crystral/sdk';
+import { ProviderError } from '@crystralai/sdk';
 
 try {
   await agent.run('Hello');
@@ -154,7 +154,7 @@ try {
 - `retryAfterMs?: number` — suggested delay before retrying (may be `undefined`)
 
 ```typescript
-import { RateLimitError } from '@crystral/sdk';
+import { RateLimitError } from '@crystralai/sdk';
 
 async function runWithRetry(agentName: string, message: string, maxRetries = 3) {
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -188,7 +188,7 @@ async function runWithRetry(agentName: string, message: string, maxRetries = 3) 
 system prompt to discourage calling tools that don't exist.
 
 ```typescript
-import { ToolNotFoundError } from '@crystral/sdk';
+import { ToolNotFoundError } from '@crystralai/sdk';
 
 try {
   await agent.run('Use the calculator tool');
@@ -213,7 +213,7 @@ error from a `rest_api` tool, thrown exception from a `javascript` tool).
 - `cause?: Error` — the underlying error
 
 ```typescript
-import { ToolExecutionError } from '@crystral/sdk';
+import { ToolExecutionError } from '@crystralai/sdk';
 
 try {
   await agent.run('Fetch the current stock price');
@@ -240,7 +240,7 @@ try {
 **Resolution:** Review your agent tool definitions to ensure no circular references exist.
 
 ```typescript
-import { CircularDelegationError } from '@crystral/sdk';
+import { CircularDelegationError } from '@crystralai/sdk';
 
 try {
   await client.run('orchestrator', 'Do something');
@@ -269,7 +269,7 @@ import {
   ToolNotFoundError,
   ToolExecutionError,
   CircularDelegationError,
-} from '@crystral/sdk';
+} from '@crystralai/sdk';
 
 async function safeRun(agentName: string, message: string) {
   try {

@@ -9,7 +9,7 @@ import {
   writeAgentConfig,
   findProjectRoot,
   createAgentRunner,
-} from '@crystral/core';
+} from '@crystralai/core';
 import type {
   AgentConfig,
   AgentRunOptions,
@@ -20,7 +20,7 @@ import type {
   CapabilitiesConfig,
   CacheConfig,
   LoggingConfig,
-} from '@crystral/core';
+} from '@crystralai/core';
 
 export function createAgentsRouter(cwd: string): Hono {
   const app = new Hono();

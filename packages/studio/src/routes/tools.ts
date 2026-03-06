@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { listTools, loadToolConfig } from '@crystral/core';
+import { listTools, loadToolConfig } from '@crystralai/core';
 
 export function createToolsRouter(cwd: string): Hono {
   const app = new Hono();

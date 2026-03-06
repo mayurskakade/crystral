@@ -1,4 +1,4 @@
-# Getting Started with @crystral/sdk
+# Getting Started with @crystralai/sdk
 
 This guide walks you from zero to a working agent in under five minutes.
 
@@ -8,13 +8,13 @@ This guide walks you from zero to a working agent in under five minutes.
 
 ```bash
 # npm
-npm install @crystral/sdk
+npm install @crystralai/sdk
 
 # pnpm
-pnpm add @crystral/sdk
+pnpm add @crystralai/sdk
 
 # yarn
-yarn add @crystral/sdk
+yarn add @crystralai/sdk
 ```
 
 **Requirements:** Node.js 18 or later.
@@ -74,7 +74,7 @@ temperature: 0.7
 
 ```typescript
 // index.ts
-import { Crystral } from '@crystral/sdk';
+import { Crystral } from '@crystralai/sdk';
 
 const client = new Crystral();
 

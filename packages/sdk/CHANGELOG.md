@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to `@crystral/sdk` are documented here.
+All notable changes to `@crystralai/sdk` are documented here.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`SDKWorkflowRunOptions`** and **`SDKWorkflowRunResult`** interfaces
 - **Agent delegation callbacks** — `onAgentDelegation` and `onAgentDelegationResult` in `RunOptions`
 - **`CircularDelegationError`** re-export — thrown when agent delegation creates a circular call chain
-- **New type re-exports** from `@crystral/core`: `AgentToolConfig`, `MCPServerConfig`, `WorkflowConfig`, `AgentDelegationEvent`, `AgentDelegationResultEvent`
+- **New type re-exports** from `@crystralai/core`: `AgentToolConfig`, `MCPServerConfig`, `WorkflowConfig`, `AgentDelegationEvent`, `AgentDelegationResultEvent`
 - **Workflows guide** — `docs/guides/workflows.md`
 - **Agent tool documentation** — added `agent` tool type to tools guide
 - Updated error handling guide with `CircularDelegationError`
@@ -48,7 +48,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`RunOptions` interface** — full control over session, streaming, variables, and tool iteration cap
 - **`RunResult` interface** — structured result containing `content`, `sessionId`, `messages`, `toolCalls`, `ragContext`, `usage`, and `durationMs`
 - **`GetLogsFilter` interface** — filter inference logs by agent name, count limit, and start date
-- **Re-exports of all types and error classes from `@crystral/core`**:
+- **Re-exports of all types and error classes from `@crystralai/core`**:
   - Types: `AgentConfig`, `ToolConfig`, `RAGCollectionConfig`, `RAGConfig`, `Message`, `Session`, `ToolCall`, `InferenceLog`, `Provider`, `CompletionOptions`, `CompletionResult`
   - Errors: `CrystralError`, `ValidationError`, `AgentNotFoundError`, `ToolNotFoundError`, `ToolExecutionError`, `ProviderError`, `RateLimitError`, `CredentialNotFoundError`
 - **`crystral` default singleton instance** — zero-config named export for simple scripts

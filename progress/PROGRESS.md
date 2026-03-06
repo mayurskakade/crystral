@@ -117,7 +117,7 @@ TypeScript SDK for programmatic access.
 #### API Example
 
 ```typescript
-import { Crystral } from '@crystral/sdk';
+import { Crystral } from '@crystralai/sdk';
 
 // Using the client
 const client = new Crystral();

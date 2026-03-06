@@ -1,14 +1,14 @@
 /**
  * @packageDocumentation
- * @crystral/sdk — TypeScript SDK for the Crystral local-first AI agent framework.
+ * @crystralai/sdk — TypeScript SDK for the Crystral local-first AI agent framework.
  *
- * The SDK provides a clean, developer-friendly API on top of `@crystral/core`.
+ * The SDK provides a clean, developer-friendly API on top of `@crystralai/core`.
  * Use the {@link Crystral} client to load agents, run queries, stream responses,
  * manage multi-turn sessions, and retrieve inference logs.
  *
  * @example Basic usage
  * ```typescript
- * import { Crystral } from '@crystral/sdk';
+ * import { Crystral } from '@crystralai/sdk';
  *
  * const client = new Crystral();
  * const result = await client.run('my-agent', 'What is the capital of France?');
@@ -57,22 +57,22 @@ export type {
   Provider,
   CompletionOptions,
   CompletionResult,
-} from '@crystral/core';
+} from '@crystralai/core';
 
 // Re-export new result types from core modules
 export type {
   TestSuiteResult,
   TestResult,
-} from '@crystral/core';
+} from '@crystralai/core';
 
 export type {
   ValidationResult,
   ValidationFileResult,
-} from '@crystral/core';
+} from '@crystralai/core';
 
 export type {
   DryRunResult,
-} from '@crystral/core';
+} from '@crystralai/core';
 
 /**
  * Base error class for all Crystral errors.
@@ -81,7 +81,7 @@ export type {
  *
  * @example
  * ```typescript
- * import { CrystralError } from '@crystral/sdk';
+ * import { CrystralError } from '@crystralai/sdk';
  *
  * try {
  *   await client.run('agent', 'Hello');
@@ -92,7 +92,7 @@ export type {
  * }
  * ```
  */
-export { CrystralError } from '@crystral/core';
+export { CrystralError } from '@crystralai/core';
 
 /**
  * Thrown when an agent YAML file cannot be found at the expected path.
@@ -102,7 +102,7 @@ export { CrystralError } from '@crystral/core';
  *
  * @example
  * ```typescript
- * import { AgentNotFoundError } from '@crystral/sdk';
+ * import { AgentNotFoundError } from '@crystralai/sdk';
  *
  * try {
  *   const agent = client.loadAgent('nonexistent');
@@ -113,14 +113,14 @@ export { CrystralError } from '@crystral/core';
  * }
  * ```
  */
-export { AgentNotFoundError } from '@crystral/core';
+export { AgentNotFoundError } from '@crystralai/core';
 
 /**
  * Thrown when an agent YAML references a tool that is not registered.
  *
  * @example
  * ```typescript
- * import { ToolNotFoundError } from '@crystral/sdk';
+ * import { ToolNotFoundError } from '@crystralai/sdk';
  *
  * try {
  *   await agent.run('Use the missing tool');
@@ -131,7 +131,7 @@ export { AgentNotFoundError } from '@crystral/core';
  * }
  * ```
  */
-export { ToolNotFoundError } from '@crystral/core';
+export { ToolNotFoundError } from '@crystralai/core';
 
 /**
  * Thrown when a tool invocation fails at runtime (e.g. network error in a
@@ -139,7 +139,7 @@ export { ToolNotFoundError } from '@crystral/core';
  *
  * @example
  * ```typescript
- * import { ToolExecutionError } from '@crystral/sdk';
+ * import { ToolExecutionError } from '@crystralai/sdk';
  *
  * try {
  *   await agent.run('Fetch the latest prices');
@@ -150,7 +150,7 @@ export { ToolNotFoundError } from '@crystral/core';
  * }
  * ```
  */
-export { ToolExecutionError } from '@crystral/core';
+export { ToolExecutionError } from '@crystralai/core';
 
 /**
  * Thrown when the underlying LLM provider returns an error response.
@@ -158,7 +158,7 @@ export { ToolExecutionError } from '@crystral/core';
  *
  * @example
  * ```typescript
- * import { ProviderError } from '@crystral/sdk';
+ * import { ProviderError } from '@crystralai/sdk';
  *
  * try {
  *   await agent.run('Hello');
@@ -169,7 +169,7 @@ export { ToolExecutionError } from '@crystral/core';
  * }
  * ```
  */
-export { ProviderError } from '@crystral/core';
+export { ProviderError } from '@crystralai/core';
 
 /**
  * Thrown when the LLM provider returns HTTP 429 (Too Many Requests).
@@ -177,7 +177,7 @@ export { ProviderError } from '@crystral/core';
  *
  * @example
  * ```typescript
- * import { RateLimitError } from '@crystral/sdk';
+ * import { RateLimitError } from '@crystralai/sdk';
  *
  * try {
  *   await agent.run('Hello');
@@ -190,7 +190,7 @@ export { ProviderError } from '@crystral/core';
  * }
  * ```
  */
-export { RateLimitError } from '@crystral/core';
+export { RateLimitError } from '@crystralai/core';
 
 /**
  * Thrown when a required API key or credential cannot be found.
@@ -201,7 +201,7 @@ export { RateLimitError } from '@crystral/core';
  *
  * @example
  * ```typescript
- * import { CredentialNotFoundError } from '@crystral/sdk';
+ * import { CredentialNotFoundError } from '@crystralai/sdk';
  *
  * try {
  *   await agent.run('Hello');
@@ -212,7 +212,7 @@ export { RateLimitError } from '@crystral/core';
  * }
  * ```
  */
-export { CredentialNotFoundError } from '@crystral/core';
+export { CredentialNotFoundError } from '@crystralai/core';
 
 /**
  * Thrown when an agent YAML file fails schema validation.
@@ -220,7 +220,7 @@ export { CredentialNotFoundError } from '@crystral/core';
  *
  * @example
  * ```typescript
- * import { ValidationError } from '@crystral/sdk';
+ * import { ValidationError } from '@crystralai/sdk';
  *
  * try {
  *   const agent = client.loadAgent('bad-config');
@@ -231,7 +231,7 @@ export { CredentialNotFoundError } from '@crystral/core';
  * }
  * ```
  */
-export { ValidationError } from '@crystral/core';
+export { ValidationError } from '@crystralai/core';
 
 /**
  * Thrown when an agent delegation creates a circular call chain.
@@ -239,7 +239,7 @@ export { ValidationError } from '@crystral/core';
  *
  * @example
  * ```typescript
- * import { CircularDelegationError } from '@crystral/sdk';
+ * import { CircularDelegationError } from '@crystralai/sdk';
  *
  * try {
  *   await workflow.run('Do something');
@@ -250,14 +250,14 @@ export { ValidationError } from '@crystral/core';
  * }
  * ```
  */
-export { CircularDelegationError } from '@crystral/core';
+export { CircularDelegationError } from '@crystralai/core';
 
 /**
  * Thrown when a guardrail check blocks input or output.
  *
  * @example
  * ```typescript
- * import { GuardrailError } from '@crystral/sdk';
+ * import { GuardrailError } from '@crystralai/sdk';
  *
  * try {
  *   await agent.run('Some blocked input');
@@ -268,28 +268,28 @@ export { CircularDelegationError } from '@crystral/core';
  * }
  * ```
  */
-export { GuardrailError } from '@crystral/core';
+export { GuardrailError } from '@crystralai/core';
 
 // Re-export new functions from core
 export {
   /** Validate all YAML config files in the project against their Zod schemas. */
   validateProject,
-} from '@crystral/core';
+} from '@crystralai/core';
 
 export {
   /** Run every test case in a test suite and return aggregated results. */
   runTestSuite,
-} from '@crystral/core';
+} from '@crystralai/core';
 
 export {
   /** Load agent config, resolve inheritance, resolve system prompt, and return a summary without making LLM calls. */
   dryRun,
-} from '@crystral/core';
+} from '@crystralai/core';
 
 export {
   /** Resolve a system prompt (string or template reference) to a final string. */
   resolveSystemPrompt,
-} from '@crystral/core';
+} from '@crystralai/core';
 
 export {
   /** Load a prompt template config from prompts/<name>.yaml */
@@ -306,7 +306,7 @@ export {
   loadScheduleConfig,
   /** List all schedules in the project */
   listSchedules,
-} from '@crystral/core';
+} from '@crystralai/core';
 
 // Import internal classes
 import {
@@ -321,7 +321,7 @@ import {
   dryRun,
   loadPromptTemplate,
   loadTestSuite,
-} from '@crystral/core';
+} from '@crystralai/core';
 import type {
   AgentConfig,
   WorkflowConfig,
@@ -332,7 +332,7 @@ import type {
   ValidationResult,
   TestSuiteResult,
   DryRunResult,
-} from '@crystral/core';
+} from '@crystralai/core';
 
 /**
  * Options passed to the {@link Crystral} constructor.
@@ -909,7 +909,7 @@ export class Workflow {
  *
  * @example Minimal setup
  * ```typescript
- * import { Crystral } from '@crystral/sdk';
+ * import { Crystral } from '@crystralai/sdk';
  *
  * const client = new Crystral();
  * const result = await client.run('my-agent', 'Hello!');
@@ -1150,7 +1150,7 @@ export class Crystral {
  *
  * @example
  * ```typescript
- * import Crystral from '@crystral/sdk';
+ * import Crystral from '@crystralai/sdk';
  * const client = new Crystral();
  * ```
  */
@@ -1164,7 +1164,7 @@ export default Crystral;
  *
  * @example
  * ```typescript
- * import { crystral } from '@crystral/sdk';
+ * import { crystral } from '@crystralai/sdk';
  * const result = await crystral.run('my-agent', 'Hello!');
  * ```
  */

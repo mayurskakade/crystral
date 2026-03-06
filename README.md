@@ -252,7 +252,7 @@ MCP tools are automatically discovered at runtime and prefixed with `mcp_{server
 ## TypeScript SDK
 
 ```typescript
-import { Crystral } from '@crystral/sdk'
+import { Crystral } from '@crystralai/sdk'
 
 const client = new Crystral()
 

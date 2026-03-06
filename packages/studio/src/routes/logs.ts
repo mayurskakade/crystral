@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { SQLiteStorage } from '@crystral/core';
+import { SQLiteStorage } from '@crystralai/core';
 
 export function createLogsRouter(cwd: string): Hono {
   const app = new Hono();

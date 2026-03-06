@@ -3,7 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import Crystral from '@crystral/sdk';
+import Crystral from '@crystralai/sdk';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 

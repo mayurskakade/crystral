@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { hasApiKey, getApiKeySource, listGlobalCredentials, saveGlobalCredential, removeGlobalCredential } from '@crystral/core';
+import { hasApiKey, getApiKeySource, listGlobalCredentials, saveGlobalCredential, removeGlobalCredential } from '@crystralai/core';
 
 const KNOWN_PROVIDERS = ['openai', 'anthropic', 'groq', 'google', 'together'] as const;
 

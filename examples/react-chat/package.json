@@ -10,7 +10,7 @@
     "build": "vite build"
   },
   "dependencies": {
-    "@crystral/sdk": "workspace:*",
+    "@crystralai/sdk": "workspace:*",
     "cors": "^2.8.5",
     "dotenv": "^16.4.0",
     "express": "^4.19.0",

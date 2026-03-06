@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { listRAGCollections, loadRAGCollectionConfig, SQLiteStorage } from '@crystral/core';
+import { listRAGCollections, loadRAGCollectionConfig, SQLiteStorage } from '@crystralai/core';
 
 export function createRAGRouter(cwd: string): Hono {
   const app = new Hono();

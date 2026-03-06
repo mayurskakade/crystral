@@ -1,5 +1,5 @@
 {
-  "name": "@crystral/sdk",
+  "name": "@crystralai/sdk",
   "version": "0.4.0",
   "description": "TypeScript SDK for Crystral - Local-first AI agent framework",
   "type": "module",
@@ -20,12 +20,14 @@
   },
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
     "build": "tsup src/index.ts --format esm,cjs --dts --clean",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist",
+    "prepack": "cp ../../LICENSE ./LICENSE",
     "docs": "typedoc",
     "docs:watch": "typedoc --watch"
   },
@@ -37,19 +39,19 @@
     "framework",
     "sdk"
   ],
-  "author": "dnyantra",
+  "author": "Mayur Kakade <mskakade111@gmail.com>",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/dnyantra/crystral.git",
+    "url": "git+https://github.com/mayurskakade/crystral.git",
     "directory": "packages/sdk"
   },
   "bugs": {
-    "url": "https://github.com/dnyantra/crystral/issues"
+    "url": "https://github.com/mayurskakade/crystral/issues"
   },
-  "homepage": "https://github.com/dnyantra/crystral#readme",
+  "homepage": "https://github.com/mayurskakade/crystral#readme",
   "dependencies": {
-    "@crystral/core": "workspace:*"
+    "@crystralai/core": "workspace:*"
   },
   "devDependencies": {
     "tsup": "^8.5.1",
@@ -59,5 +61,8 @@
   },
   "peerDependencies": {
     "typescript": ">=5.0"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

@@ -6,7 +6,7 @@ import {
   listSchedules,
   loadScheduleConfig,
   findProjectRoot,
-} from '@crystral/core';
+} from '@crystralai/core';
 
 export function createSchedulesRouter(cwd: string): Hono {
   const app = new Hono();
