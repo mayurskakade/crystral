@@ -1,4 +1,4 @@
-import type { AgentConfig, Message, ToolDefinition, CompletionOptions, CompletionResult, ToolConfig, Provider, ImageInput, ContentBlock, MediaOutput, AudioBlock } from '../types/index.js';
+import type { AgentConfig, Message, ToolDefinition, CompletionOptions, CompletionResult, ToolConfig, ImageInput, ContentBlock, MediaOutput, AudioBlock } from '../types/index.js';
 import { resolveSystemPrompt } from '../prompts/index.js';
 import { loadAgentConfig, loadToolConfig, findProjectRoot } from '../config/loader.js';
 import { resolveApiKey } from '../credentials/resolver.js';

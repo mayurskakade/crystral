@@ -24,7 +24,6 @@ export type {
   AgentToolConfig,
   MCPServerConfig,
   WorkflowConfig,
-  RAGCollectionConfig,
   RAGConfig,
   // New config types (Phase 1 & 2)
   OutputConfig,

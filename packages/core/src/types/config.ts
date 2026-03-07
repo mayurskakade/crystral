@@ -306,6 +306,7 @@ export const AgentConfigSchema = z.object({
   description: z.string().max(512).optional(),
   provider: ProviderSchema,
   model: z.string().min(1).max(128),
+  base_url: z.string().url().optional(),
   system_prompt: SystemPromptSchema.default(''),
   temperature: z.number().min(0).max(2).default(1.0),
   max_tokens: z.number().int().min(1).max(1000000).default(4096),

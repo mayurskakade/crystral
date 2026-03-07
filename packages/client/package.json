@@ -1,6 +1,6 @@
 {
   "name": "@crystralai/client",
-  "version": "0.1.0",
+  "version": "0.4.1",
   "description": "Universal client-side SDK for Crystral — browser, React Native, Electron, Edge. Zero Node.js dependencies.",
   "type": "module",
   "main": "./dist/index.cjs",
