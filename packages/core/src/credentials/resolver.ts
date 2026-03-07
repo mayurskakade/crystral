@@ -1,14 +1,14 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
-import type { Provider } from '../types/index.js';
+import type { BuiltInProvider } from '../types/index.js';
 import { CredentialNotFoundError } from '../errors/index.js';
 import { findProjectRoot } from '../config/loader.js';
 
 /**
  * Provider to environment variable name mapping
  */
-const PROVIDER_ENV_VARS: Record<Provider, string> = {
+const PROVIDER_ENV_VARS: Record<BuiltInProvider, string> = {
   openai: 'OPENAI_API_KEY',
   anthropic: 'ANTHROPIC_API_KEY',
   groq: 'GROQ_API_KEY',
@@ -27,7 +27,7 @@ const ADDITIONAL_ENV_VARS: Record<string, string> = {
  * Get all provider env var names
  */
 function getEnvVarName(provider: string): string {
-  return PROVIDER_ENV_VARS[provider as Provider] ?? ADDITIONAL_ENV_VARS[provider] ?? `${provider.toUpperCase()}_API_KEY`;
+  return PROVIDER_ENV_VARS[provider as BuiltInProvider] ?? ADDITIONAL_ENV_VARS[provider] ?? `${provider.toUpperCase()}_API_KEY`;
 }
 
 /**
@@ -128,7 +128,7 @@ function parseEnvFile(filePath: string): Record<string, string> {
  * Resolve API key for a provider
  * Priority: env var > project .env > ~/.crystral/credentials
  */
-export function resolveApiKey(provider: Provider | string, cwd?: string): string {
+export function resolveApiKey(provider: string, cwd?: string): string {
   const envVarName = getEnvVarName(provider);
   
   // Priority 1: Process environment variable
@@ -164,7 +164,7 @@ export function resolveApiKey(provider: Provider | string, cwd?: string): string
 /**
  * Check if an API key is available for a provider (without throwing)
  */
-export function hasApiKey(provider: Provider | string, cwd?: string): boolean {
+export function hasApiKey(provider: string, cwd?: string): boolean {
   try {
     resolveApiKey(provider, cwd);
     return true;
@@ -176,7 +176,7 @@ export function hasApiKey(provider: Provider | string, cwd?: string): boolean {
 /**
  * Get the source of an API key (for display purposes)
  */
-export function getApiKeySource(provider: Provider | string, cwd?: string): 'env' | 'dotenv' | 'credentials' | null {
+export function getApiKeySource(provider: string, cwd?: string): 'env' | 'dotenv' | 'credentials' | null {
   const envVarName = getEnvVarName(provider);
   
   // Check process env
@@ -210,7 +210,7 @@ export function getApiKeySource(provider: Provider | string, cwd?: string): 'env
 /**
  * Save a credential to the global credentials file
  */
-export function saveGlobalCredential(provider: Provider | string, apiKey: string): void {
+export function saveGlobalCredential(provider: string, apiKey: string): void {
   const homeDir = os.homedir();
   const crystralDir = path.join(homeDir, '.crystral');
   const credentialsPath = path.join(crystralDir, 'credentials');
@@ -291,11 +291,11 @@ export function listGlobalCredentials(): Record<string, { maskedKey: string; sou
   const allProviders = [...Object.keys(PROVIDER_ENV_VARS), ...Object.keys(ADDITIONAL_ENV_VARS)];
   
   for (const provider of allProviders) {
-    const source = getApiKeySource(provider as Provider);
+    const source = getApiKeySource(provider as BuiltInProvider);
     
     if (source) {
       try {
-        const key = resolveApiKey(provider as Provider);
+        const key = resolveApiKey(provider as BuiltInProvider);
         const maskedKey = maskApiKey(key);
         result[provider] = { maskedKey, source };
       } catch {
@@ -325,7 +325,7 @@ function maskApiKey(key: string): string {
 /**
  * Remove a credential from the global credentials file
  */
-export function removeGlobalCredential(provider: Provider | string): boolean {
+export function removeGlobalCredential(provider: string): boolean {
   const homeDir = os.homedir();
   const credentialsPath = path.join(homeDir, '.crystral', 'credentials');
   

@@ -53,11 +53,23 @@ export type {
   ImageInput,
   GuardrailResult,
   ProviderUsed,
+  // Multimodal types
+  ContentBlock,
+  TextBlock,
+  ImageBlock,
+  AudioBlock,
+  DocumentBlock,
+  MediaOutput,
+  ImageOutput,
+  AudioOutput,
   // Provider types
   Provider,
+  BuiltInProvider,
   CompletionOptions,
   CompletionResult,
 } from '@crystralai/core';
+
+export { BUILT_IN_PROVIDERS, registerProvider, unregisterProvider, listProviders } from '@crystralai/core';
 
 // Re-export new result types from core modules
 export type {
@@ -328,6 +340,8 @@ import type {
   Message,
   InferenceLog,
   ImageInput,
+  ContentBlock,
+  MediaOutput,
   PromptTemplateConfig,
   ValidationResult,
   TestSuiteResult,
@@ -487,10 +501,27 @@ export interface RunOptions {
   profile?: string;
 
   /**
-   * Multimodal image inputs to include with the user message.
+   * Multimodal image inputs to include with the user message (legacy).
    * Requires the agent to have `capabilities.vision: true` configured.
    */
   images?: ImageInput[];
+
+  /**
+   * Unified multimodal input blocks (audio, image, document).
+   * Use this instead of `images` for mixed or audio input.
+   */
+  input?: ContentBlock[];
+
+  /**
+   * Requested output modalities. Defaults to `['text']`.
+   * Include `'audio'` for TTS, `'image'` for image generation.
+   */
+  outputModalities?: Array<'text' | 'audio' | 'image'>;
+
+  /**
+   * Override the TTS voice (e.g. `'alloy'`, `'nova'`).
+   */
+  ttsVoice?: string;
 }
 
 /**
@@ -604,6 +635,18 @@ export interface RunResult {
     /** Whether PII was redacted from input or output */
     piiRedacted?: boolean;
   };
+
+  /**
+   * Generated media outputs (images, audio) when `outputModalities` includes
+   * `'image'` or `'audio'`.
+   */
+  media?: MediaOutput[];
+
+  /**
+   * Auto-transcribed text from audio input blocks.
+   * Present when audio was transcribed before LLM completion.
+   */
+  transcript?: string;
 }
 
 /**
@@ -695,11 +738,7 @@ export class Agent {
    * ```
    */
   async run(message: string, options?: RunOptions): Promise<RunResult> {
-    const runOptions = { ...options };
-    if (options?.images) {
-      runOptions.images = options.images;
-    }
-    const result = await this.runner.run(message, runOptions);
+    const result = await this.runner.run(message, options);
 
     return {
       content: result.content,
@@ -718,6 +757,8 @@ export class Agent {
       ...(result.traceId ? { traceId: result.traceId } : {}),
       ...(result.providerUsed ? { providerUsed: result.providerUsed } : {}),
       ...(result.guardrails ? { guardrails: result.guardrails } : {}),
+      ...(result.media && result.media.length > 0 ? { media: result.media } : {}),
+      ...(result.transcript !== undefined ? { transcript: result.transcript } : {}),
     };
   }
 

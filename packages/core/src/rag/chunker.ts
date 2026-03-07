@@ -1,4 +1,11 @@
-import type { RAGCollectionConfig } from '../types/index.js';
+// @ts-nocheck
+// This file is kept for historical reference only. It is not exported and not used.
+// Crystal AI no longer manages in-house RAG chunking — use external vector stores.
+interface RAGCollectionConfig {
+  chunk_size: number;
+  chunk_overlap: number;
+  [key: string]: unknown;
+}
 
 /**
  * Text chunk for RAG indexing

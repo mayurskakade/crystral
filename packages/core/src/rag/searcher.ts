@@ -1,4 +1,13 @@
-import type { RAGConfig } from '../types/index.js';
+// @ts-nocheck
+// This file is kept for historical reference only. It is not exported and not used.
+// Crystal AI no longer manages in-house RAG search — use external vector stores.
+interface RAGConfig {
+  collections: string[];
+  embedding_provider: 'openai' | 'anthropic' | 'groq' | 'google' | 'together';
+  embedding_model: string;
+  match_threshold: number;
+  match_count: number;
+}
 import type { StorageAdapter } from '../storage/index.js';
 import { createEmbedder } from './embedder.js';
 

@@ -172,6 +172,12 @@ export interface CompletionOptions {
   tool_choice?: 'auto' | 'none' | { name: string };
   response_format?: { type: string };
   images?: ImageInput[];
+  /** Unified multimodal input blocks (audio, image, document) */
+  input_blocks?: ContentBlock[];
+  /** Requested output modalities */
+  output_modalities?: Array<'text' | 'audio' | 'image'>;
+  /** Voice ID for TTS synthesis */
+  tts_voice?: string;
 }
 
 export interface CompletionResult {
@@ -180,6 +186,10 @@ export interface CompletionResult {
   input_tokens: number;
   output_tokens: number;
   finish_reason: FinishReason;
+  /** Generated media outputs (images, audio) */
+  media?: MediaOutput[];
+  /** Auto-transcribed text from audio input blocks */
+  transcript?: string;
 }
 
 // ============================================
@@ -228,6 +238,57 @@ export interface ImageInput {
   /** MIME type (e.g. 'image/png', 'image/jpeg') */
   media_type: string;
 }
+
+// ============================================
+// Unified Content Blocks (Multimodal Input)
+// ============================================
+
+export interface TextBlock {
+  type: 'text';
+  text: string;
+}
+
+export interface ImageBlock {
+  type: 'image';
+  data: string;
+  media_type: string;
+}
+
+export interface AudioBlock {
+  type: 'audio';
+  data: string;
+  media_type: string;
+  duration_seconds?: number;
+}
+
+export interface DocumentBlock {
+  type: 'document';
+  data: string;
+  media_type: 'application/pdf';
+  filename?: string;
+}
+
+export type ContentBlock = TextBlock | ImageBlock | AudioBlock | DocumentBlock;
+
+// ============================================
+// Media Output (Multimodal Output)
+// ============================================
+
+export interface ImageOutput {
+  type: 'image';
+  data: string;
+  media_type: string;
+  revised_prompt?: string;
+}
+
+export interface AudioOutput {
+  type: 'audio';
+  data: string;
+  media_type: string;
+  duration_seconds?: number;
+}
+
+export type MediaOutput = ImageOutput | AudioOutput;
 
 // ============================================
 // Extended Agent Run Result fields

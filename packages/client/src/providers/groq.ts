@@ -1,4 +1,4 @@
-import type { Message, CompletionOptions, CompletionResult } from '../types.js';
+import type { Message, CompletionOptions, CompletionResult, AudioBlock } from '../types.js';
 import { ProviderError, RateLimitError } from '../errors.js';
 import type { ProviderClient } from './base.js';
 import { formatMessages, formatTools } from './base.js';
@@ -6,6 +6,33 @@ import { readSSE } from './openai.js';
 
 export class GroqProvider implements ProviderClient {
   constructor(private apiKey: string, private baseUrl = 'https://api.groq.com/openai/v1') {}
+
+  supportsVision(): boolean { return false; }
+  supportsTranscription(): boolean { return true; }
+  supportsAudioInput(): boolean { return false; }
+  supportsTTS(): boolean { return false; }
+  supportsImageGeneration(): boolean { return false; }
+  supportsDocuments(): boolean { return false; }
+
+  async transcribe(audio: AudioBlock, model: string): Promise<string> {
+    const ext = audio.media_type.replace('audio/', '') || 'mp3';
+    const binaryStr = atob(audio.data);
+    const bytes = new Uint8Array(binaryStr.length);
+    for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
+    const form = new FormData();
+    form.append('file', new Blob([bytes], { type: audio.media_type }), `audio.${ext}`);
+    form.append('model', model);
+    const response = await fetch(`${this.baseUrl}/audio/transcriptions`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${this.apiKey}` },
+      body: form,
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({})) as Record<string, unknown>;
+      throw new ProviderError('groq', model, response.status, (err.error as Record<string, unknown>)?.message as string || 'Unknown error');
+    }
+    return ((await response.json()) as Record<string, unknown>).text as string ?? '';
+  }
 
   async complete(messages: Message[], model: string, opts?: CompletionOptions): Promise<CompletionResult> {
     const body: Record<string, unknown> = {

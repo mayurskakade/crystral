@@ -1,10 +1,56 @@
-import type { Message, CompletionOptions, CompletionResult } from '../types.js';
+import type { Message, CompletionOptions, CompletionResult, AudioBlock, AudioOutput } from '../types.js';
 import { ProviderError, RateLimitError } from '../errors.js';
 import type { ProviderClient } from './base.js';
-import { buildGeminiImageParts } from './base.js';
+import { buildGeminiImageParts, buildGeminiAudioParts, buildGeminiDocumentParts } from './base.js';
 
 export class GoogleProvider implements ProviderClient {
   constructor(private apiKey: string, private baseUrl = 'https://generativelanguage.googleapis.com/v1beta') {}
+
+  supportsVision(): boolean { return true; }
+  supportsTranscription(): boolean { return false; }
+  supportsAudioInput(): boolean { return true; }
+  supportsTTS(): boolean { return true; }
+  supportsImageGeneration(): boolean { return false; }
+  supportsDocuments(): boolean { return true; }
+
+  async synthesize(text: string, model: string, voice?: string): Promise<AudioOutput> {
+    const response = await fetch(`${this.baseUrl}/models/${model}:generateContent?key=${this.apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ role: 'user', parts: [{ text }] }],
+        generationConfig: {
+          responseModalities: ['AUDIO'],
+          speechConfig: {
+            voiceConfig: { prebuiltVoiceConfig: { voiceName: voice ?? 'Aoede' } },
+          },
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({})) as Record<string, unknown>;
+      const msg = (err.error as Record<string, unknown>)?.message as string || 'Unknown error';
+      if (response.status === 429) throw new RateLimitError('google', model);
+      throw new ProviderError('google', model, response.status, msg);
+    }
+
+    const data = await response.json() as Record<string, unknown>;
+    const parts = ((data.candidates as Array<Record<string, unknown>>)?.[0]?.content as Record<string, unknown>)?.parts as Array<Record<string, unknown>>;
+
+    for (const part of parts ?? []) {
+      const inlineData = part.inlineData as Record<string, unknown> | undefined;
+      if (inlineData?.data) {
+        return {
+          type: 'audio',
+          data: inlineData.data as string,
+          media_type: ((inlineData.mimeType as string) ?? 'audio/pcm').split(';')[0] as string,
+        };
+      }
+    }
+
+    throw new ProviderError('google', model, 0, 'No audio data in Gemini TTS response');
+  }
 
   async complete(messages: Message[], model: string, opts?: CompletionOptions): Promise<CompletionResult> {
     const system = messages.find(m => m.role === 'system');
@@ -13,6 +59,13 @@ export class GoogleProvider implements ProviderClient {
       .map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] as unknown[] }));
 
     if (opts?.images?.length) contents = buildGeminiImageParts(contents, opts.images);
+
+    if (opts?.input_blocks?.length) {
+      const audioBlocks = opts.input_blocks.filter(b => b.type === 'audio') as AudioBlock[];
+      if (audioBlocks.length) contents = buildGeminiAudioParts(contents, audioBlocks);
+      const docs = opts.input_blocks.filter(b => b.type === 'document') as import('../types.js').DocumentBlock[];
+      if (docs.length) contents = buildGeminiDocumentParts(contents, docs);
+    }
 
     const generationConfig: Record<string, unknown> = {
       temperature: opts?.temperature ?? 1.0,

@@ -1,14 +1,76 @@
-import type { Message, CompletionOptions, CompletionResult } from '../types.js';
+import type { Message, CompletionOptions, CompletionResult, AudioBlock, AudioOutput, ImageOutput } from '../types.js';
 import { ProviderError, RateLimitError } from '../errors.js';
 import type { ProviderClient } from './base.js';
-import { formatMessages, formatTools, buildOpenAIImageContent } from './base.js';
+import { formatMessages, formatTools, buildOpenAIImageContent, buildOpenAIAudioContent } from './base.js';
 
 export class OpenAIProvider implements ProviderClient {
   constructor(private apiKey: string, private baseUrl = 'https://api.openai.com/v1') {}
 
+  supportsVision(): boolean { return true; }
+  supportsTranscription(): boolean { return true; }
+  supportsAudioInput(): boolean { return true; }
+  supportsTTS(): boolean { return true; }
+  supportsImageGeneration(): boolean { return true; }
+  supportsDocuments(): boolean { return false; }
+
+  async transcribe(audio: AudioBlock, model: string): Promise<string> {
+    const ext = audio.media_type.replace('audio/', '') || 'mp3';
+    const binaryStr = atob(audio.data);
+    const bytes = new Uint8Array(binaryStr.length);
+    for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
+    const form = new FormData();
+    form.append('file', new Blob([bytes], { type: audio.media_type }), `audio.${ext}`);
+    form.append('model', model);
+    const response = await fetch(`${this.baseUrl}/audio/transcriptions`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${this.apiKey}` },
+      body: form,
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({})) as Record<string, unknown>;
+      throw new ProviderError('openai', model, response.status, (err.error as Record<string, unknown>)?.message as string || 'Unknown error');
+    }
+    return ((await response.json()) as Record<string, unknown>).text as string ?? '';
+  }
+
+  async synthesize(text: string, model: string, voice?: string): Promise<AudioOutput> {
+    const response = await fetch(`${this.baseUrl}/audio/speech`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${this.apiKey}` },
+      body: JSON.stringify({ model, input: text, voice: voice ?? 'alloy', response_format: 'mp3' }),
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({})) as Record<string, unknown>;
+      throw new ProviderError('openai', model, response.status, (err.error as Record<string, unknown>)?.message as string || 'Unknown error');
+    }
+    const buffer = await response.arrayBuffer();
+    return { type: 'audio', data: btoa(String.fromCharCode(...new Uint8Array(buffer))), media_type: 'audio/mpeg' };
+  }
+
+  async generateImage(prompt: string, model: string, opts?: { size?: string; n?: number }): Promise<ImageOutput[]> {
+    const response = await fetch(`${this.baseUrl}/images/generations`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${this.apiKey}` },
+      body: JSON.stringify({ model, prompt, n: opts?.n ?? 1, size: opts?.size ?? '1024x1024', response_format: 'b64_json' }),
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({})) as Record<string, unknown>;
+      throw new ProviderError('openai', model, response.status, (err.error as Record<string, unknown>)?.message as string || 'Unknown error');
+    }
+    const data = await response.json() as Record<string, unknown>;
+    return (data.data as Array<Record<string, unknown>>).map(img => ({
+      type: 'image' as const, data: img.b64_json as string, media_type: 'image/png',
+      ...(img.revised_prompt ? { revised_prompt: img.revised_prompt as string } : {}),
+    }));
+  }
+
   async complete(messages: Message[], model: string, opts?: CompletionOptions): Promise<CompletionResult> {
     let formatted = formatMessages(messages);
     if (opts?.images?.length) formatted = buildOpenAIImageContent(formatted, opts.images);
+    if (opts?.input_blocks?.length) {
+      const audioBlocks = opts.input_blocks.filter(b => b.type === 'audio') as AudioBlock[];
+      if (audioBlocks.length) formatted = buildOpenAIAudioContent(formatted, audioBlocks);
+    }
 
     const body: Record<string, unknown> = {
       model,

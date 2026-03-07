@@ -5,7 +5,7 @@ export * from './credentials/index.js';
 export * from './storage/index.js';
 export * from './providers/index.js';
 export * from './tools/index.js';
-export * from './rag/index.js';
+export * from './vector-stores/index.js';
 export * from './agent/index.js';
 export * from './workflow/index.js';
 export * from './mcp/index.js';

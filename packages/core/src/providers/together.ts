@@ -1,4 +1,4 @@
-import type { Message, CompletionOptions, CompletionResult } from '../types/index.js';
+import type { Message, CompletionOptions, CompletionResult, ImageOutput, AudioBlock, AudioOutput } from '../types/index.js';
 import { ProviderError, RateLimitError } from '../errors/index.js';
 import { ProviderClient, formatMessagesForProvider, formatToolsForProvider } from './base.js';
 
@@ -160,8 +160,96 @@ export class TogetherProvider implements ProviderClient {
   async embed(_text: string, _model: string): Promise<number[]> {
     throw new ProviderError('together', '', 0, 'Together AI does not support embeddings via this SDK');
   }
-  
-  supportsEmbeddings(): boolean {
-    return false;
+
+  supportsEmbeddings(): boolean { return false; }
+  supportsVision(): boolean { return false; }
+  supportsTranscription(): boolean { return true; }
+  supportsAudioInput(): boolean { return false; }
+  supportsTTS(): boolean { return true; }
+  supportsImageGeneration(): boolean { return true; }
+  supportsDocuments(): boolean { return false; }
+
+  async transcribe(audio: AudioBlock, model: string): Promise<string> {
+    const mimeType = audio.media_type;
+    const ext = mimeType.replace('audio/', '') || 'mp3';
+    const binaryStr = atob(audio.data);
+    const bytes = new Uint8Array(binaryStr.length);
+    for (let i = 0; i < binaryStr.length; i++) {
+      bytes[i] = binaryStr.charCodeAt(i);
+    }
+    const form = new FormData();
+    form.append('file', new Blob([bytes], { type: mimeType }), `audio.${ext}`);
+    form.append('model', model);
+
+    const response = await fetch(`${this.baseUrl}/audio/transcriptions`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${this.apiKey}` },
+      body: form,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({})) as Record<string, unknown>;
+      const msg = (errorData.error as Record<string, unknown>)?.message as string || 'Unknown error';
+      throw new ProviderError('together', model, response.status, msg);
+    }
+
+    const data = await response.json() as Record<string, unknown>;
+    return (data.text as string) ?? '';
+  }
+
+  async synthesize(text: string, model: string, voice?: string): Promise<AudioOutput> {
+    const response = await fetch(`${this.baseUrl}/audio/speech`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        input: text,
+        voice: voice ?? 'default',
+        response_format: 'mp3',
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({})) as Record<string, unknown>;
+      const msg = (errorData.error as Record<string, unknown>)?.message as string || 'Unknown error';
+      throw new ProviderError('together', model, response.status, msg);
+    }
+
+    const buffer = await response.arrayBuffer();
+    const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
+    return { type: 'audio', data: base64, media_type: 'audio/mpeg' };
+  }
+
+  async generateImage(prompt: string, model: string, opts?: { size?: string; n?: number }): Promise<ImageOutput[]> {
+    const response = await fetch(`${this.baseUrl}/images/generations`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        prompt,
+        n: opts?.n ?? 1,
+        ...(opts?.size ? { width: parseInt(opts.size.split('x')[0] ?? '1024'), height: parseInt(opts.size.split('x')[1] ?? '1024') } : {}),
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({})) as Record<string, unknown>;
+      const msg = (errorData.error as Record<string, unknown>)?.message as string || 'Unknown error';
+      throw new ProviderError('together', model, response.status, msg);
+    }
+
+    const data = await response.json() as Record<string, unknown>;
+    const images = data.data as Array<Record<string, unknown>>;
+    return images.map(img => ({
+      type: 'image' as const,
+      data: (img.b64_json as string) ?? '',
+      media_type: 'image/png',
+    }));
   }
 }

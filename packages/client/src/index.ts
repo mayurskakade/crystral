@@ -1,4 +1,5 @@
 export { CrystralClient } from './client.js';
+export { registerProvider, unregisterProvider, listProviders } from './providers/index.js';
 export { MemoryStorage } from './storage/memory.js';
 export { LocalStorageAdapter } from './storage/local-storage.js';
 export {
@@ -8,8 +9,10 @@ export {
   ToolExecutionError,
   InvalidConfigError,
 } from './errors.js';
+export { BUILT_IN_PROVIDERS } from './types.js';
 export type {
   Provider,
+  BuiltInProvider,
   Message,
   ImageInput,
   ClientTool,
@@ -17,4 +20,13 @@ export type {
   ClientConfig,
   RunOptions,
   RunResult,
+  // Multimodal types
+  ContentBlock,
+  TextBlock,
+  ImageBlock,
+  AudioBlock,
+  DocumentBlock,
+  MediaOutput,
+  ImageOutput,
+  AudioOutput,
 } from './types.js';

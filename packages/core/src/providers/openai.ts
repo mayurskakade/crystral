@@ -1,6 +1,6 @@
-import type { Message, CompletionOptions, CompletionResult } from '../types/index.js';
+import type { Message, CompletionOptions, CompletionResult, AudioBlock, AudioOutput, ImageOutput } from '../types/index.js';
 import { ProviderError, RateLimitError } from '../errors/index.js';
-import { ProviderClient, formatMessagesForProvider, formatToolsForProvider, buildOpenAIImageContent } from './base.js';
+import { ProviderClient, formatMessagesForProvider, formatToolsForProvider, buildOpenAIImageContent, buildOpenAIAudioContent } from './base.js';
 
 /**
  * OpenAI provider implementation
@@ -14,12 +14,116 @@ export class OpenAIProvider implements ProviderClient {
     this.baseUrl = baseUrl ?? 'https://api.openai.com/v1';
   }
   
+  supportsVision(): boolean { return true; }
+  supportsTranscription(): boolean { return true; }
+  supportsAudioInput(): boolean { return true; }
+  supportsTTS(): boolean { return true; }
+  supportsImageGeneration(): boolean { return true; }
+  supportsDocuments(): boolean { return false; }
+
+  async transcribe(audio: AudioBlock, model: string): Promise<string> {
+    const mimeType = audio.media_type;
+    const ext = mimeType.replace('audio/', '') || 'mp3';
+    // Decode base64 to binary
+    const binaryStr = atob(audio.data);
+    const bytes = new Uint8Array(binaryStr.length);
+    for (let i = 0; i < binaryStr.length; i++) {
+      bytes[i] = binaryStr.charCodeAt(i);
+    }
+    const blob = new Blob([bytes], { type: mimeType });
+
+    const form = new FormData();
+    form.append('file', blob, `audio.${ext}`);
+    form.append('model', model);
+
+    const response = await fetch(`${this.baseUrl}/audio/transcriptions`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${this.apiKey}` },
+      body: form,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({})) as Record<string, unknown>;
+      const msg = (errorData.error as Record<string, unknown>)?.message as string || 'Unknown error';
+      throw new ProviderError('openai', model, response.status, msg);
+    }
+
+    const data = await response.json() as Record<string, unknown>;
+    return (data.text as string) ?? '';
+  }
+
+  async synthesize(text: string, model: string, voice?: string): Promise<AudioOutput> {
+    const response = await fetch(`${this.baseUrl}/audio/speech`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        input: text,
+        voice: voice ?? 'alloy',
+        response_format: 'mp3',
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({})) as Record<string, unknown>;
+      const msg = (errorData.error as Record<string, unknown>)?.message as string || 'Unknown error';
+      throw new ProviderError('openai', model, response.status, msg);
+    }
+
+    const buffer = await response.arrayBuffer();
+    const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
+    return { type: 'audio', data: base64, media_type: 'audio/mpeg' };
+  }
+
+  async generateImage(prompt: string, model: string, opts?: { size?: string; n?: number }): Promise<ImageOutput[]> {
+    const response = await fetch(`${this.baseUrl}/images/generations`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        prompt,
+        n: opts?.n ?? 1,
+        size: opts?.size ?? '1024x1024',
+        response_format: 'b64_json',
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({})) as Record<string, unknown>;
+      const msg = (errorData.error as Record<string, unknown>)?.message as string || 'Unknown error';
+      throw new ProviderError('openai', model, response.status, msg);
+    }
+
+    const data = await response.json() as Record<string, unknown>;
+    const images = data.data as Array<Record<string, unknown>>;
+    return images.map(img => ({
+      type: 'image' as const,
+      data: img.b64_json as string,
+      media_type: 'image/png',
+      ...(img.revised_prompt ? { revised_prompt: img.revised_prompt as string } : {}),
+    }));
+  }
+
   async complete(messages: Message[], model: string, opts?: CompletionOptions): Promise<CompletionResult> {
     let formattedMessages = formatMessagesForProvider(messages);
 
     // Vision support: convert to content blocks with images
     if (opts?.images && opts.images.length > 0) {
       formattedMessages = buildOpenAIImageContent(formattedMessages, opts.images);
+    }
+
+    // Native audio-in-chat support (gpt-4o-audio-preview)
+    if (opts?.input_blocks && opts.input_blocks.length > 0) {
+      const audioBlocks = opts.input_blocks.filter(b => b.type === 'audio') as import('../types/index.js').AudioBlock[];
+      if (audioBlocks.length > 0) {
+        formattedMessages = buildOpenAIAudioContent(formattedMessages, audioBlocks);
+      }
     }
 
     const requestBody: Record<string, unknown> = {
@@ -207,7 +311,5 @@ export class OpenAIProvider implements ProviderClient {
     return embedding ?? [];
   }
   
-  supportsEmbeddings(): boolean {
-    return true;
-  }
+  supportsEmbeddings(): boolean { return true; }
 }

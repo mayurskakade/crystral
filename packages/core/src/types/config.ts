@@ -4,8 +4,11 @@ import { z } from 'zod';
 // Provider enum
 // ============================================
 
-export const ProviderSchema = z.enum(['openai', 'anthropic', 'groq', 'google', 'together']);
-export type Provider = z.infer<typeof ProviderSchema>;
+export const BUILT_IN_PROVIDERS = ['openai', 'anthropic', 'groq', 'google', 'together'] as const;
+export type BuiltInProvider = typeof BUILT_IN_PROVIDERS[number];
+/** Keeps autocomplete for known values while accepting any string for custom providers. */
+export type Provider = BuiltInProvider | (string & {});
+export const ProviderSchema = z.string().min(1).max(64);
 
 // ============================================
 // Output Config (Structured Output)
@@ -73,6 +76,14 @@ export type GuardrailsConfig = z.output<typeof GuardrailsConfigSchema>;
 export const CapabilitiesConfigSchema = z.object({
   vision: z.boolean().default(false),
   max_image_size: z.number().int().min(1).optional(),
+  audio_input: z.boolean().default(false),
+  audio_output: z.boolean().default(false),
+  image_generation: z.boolean().default(false),
+  output_modalities: z.array(z.enum(['text', 'audio', 'image'])).default(['text']),
+  tts_voice: z.string().optional(),
+  tts_model: z.string().optional(),
+  transcription_model: z.string().optional(),
+  image_gen_model: z.string().optional(),
 });
 
 export type CapabilitiesConfig = z.output<typeof CapabilitiesConfigSchema>;
@@ -136,18 +147,49 @@ export const ProjectConfigSchema = z.object({
 export type ProjectConfig = z.output<typeof ProjectConfigSchema>;
 
 // ============================================
-// RAG Config (within Agent)
+// Vector Store Config (within Agent) — replaces legacy RAGConfig
 // ============================================
 
-export const RAGConfigSchema = z.object({
-  collections: z.array(z.string().min(1)).min(1, 'At least one RAG collection is required'),
-  embedding_provider: ProviderSchema,
-  embedding_model: z.string().min(1),
-  match_threshold: z.number().min(0).max(1).default(0.7),
+export const VectorStoreProviderSchema = z.enum([
+  'pinecone',
+  'chroma',
+  'qdrant',
+  'weaviate',
+  'pgvector',
+]);
+
+export const VectorStoreConfigSchema = z.object({
+  /** Which vector database to connect to */
+  provider: VectorStoreProviderSchema,
+  /** Maximum number of chunks to retrieve */
   match_count: z.number().int().min(1).max(50).default(5),
+  /** Minimum similarity threshold (0–1). Ignored by providers that don't support it. */
+  match_threshold: z.number().min(0).max(1).default(0.7),
+  /**
+   * LLM provider to use for embedding the query.
+   * Not required for Weaviate when using its built-in nearText vectorizer.
+   */
+  embedding_provider: ProviderSchema.optional(),
+  /** Embedding model name. Required when embedding_provider is set. */
+  embedding_model: z.string().optional(),
+  /**
+   * Provider-specific connection settings.
+   * Keys vary per provider — see each connector for details.
+   *
+   * Pinecone:  { host, api_key_env, namespace? }
+   * Chroma:    { url, collection, api_key_env? }
+   * Qdrant:    { url, collection, api_key_env?, vector_name? }
+   * Weaviate:  { url, class_name, text_key?, properties?, api_key_env? }
+   * pgvector:  { connection_string_env, table, content_column?, embedding_column?, source_column? }
+   */
+  connection: z.record(z.unknown()),
 });
 
-export type RAGConfig = z.output<typeof RAGConfigSchema>;
+export type VectorStoreConfig = z.output<typeof VectorStoreConfigSchema>;
+
+// Keep legacy alias so existing code that references RAGConfig still compiles
+/** @deprecated Use VectorStoreConfig */
+export type RAGConfig = VectorStoreConfig;
 
 // ============================================
 // MCP Server Config (within Agent)
@@ -272,7 +314,7 @@ export const AgentConfigSchema = z.object({
   frequency_penalty: z.number().min(-2).max(2).default(0.0),
   stop_sequences: z.array(z.string()).optional(),
   tools: z.array(z.string()).default([]),
-  rag: RAGConfigSchema.optional(),
+  rag: VectorStoreConfigSchema.optional(),
   mcp: z.array(MCPServerSchema).default([]),
   output: OutputConfigSchema.optional(),
   retry: RetryConfigSchema.optional(),
@@ -399,28 +441,8 @@ export const ToolConfigSchema = z.discriminatedUnion('type', [
 
 export type ToolConfig = RestApiToolConfig | JavaScriptToolConfig | WebSearchToolConfig | AgentToolConfig;
 
-// ============================================
-// RAG Collection Config - rag/<name>/.crystral-rag.yaml
-// ============================================
-
-export const RAGCollectionConfigSchema = z.object({
-  version: z.literal(1),
-  name: z.string().min(1).max(64),
-  embedding_provider: ProviderSchema.default('openai'),
-  embedding_model: z.string().default('text-embedding-3-small'),
-  chunk_size: z.number().int().min(64).max(8192).default(512),
-  chunk_overlap: z.number().int().min(0).max(4096).default(64),
-  include: z.array(z.string()).default(['**/*.md', '**/*.txt', '**/*.pdf']),
-  exclude: z.array(z.string()).default([]),
-}).refine(
-  (data) => data.chunk_overlap < data.chunk_size,
-  {
-    message: 'chunk_overlap must be less than chunk_size',
-    path: ['chunk_overlap'],
-  }
-);
-
-export type RAGCollectionConfig = z.output<typeof RAGCollectionConfigSchema>;
+// RAGCollectionConfig removed — Crystal AI no longer manages in-house indexing.
+// Use external vector databases via VectorStoreConfig.
 
 // ============================================
 // Workflow Config - workflows/<name>.yaml
@@ -439,6 +461,7 @@ export const WorkflowAgentSchema = z.object({
 export const WorkflowOrchestratorSchema = z.object({
   provider: ProviderSchema,
   model: z.string().min(1).max(128),
+  base_url: z.string().url().optional(),
   system_prompt: z.string().default(''),
   strategy: z.enum(['auto', 'sequential', 'parallel']).default('auto'),
   max_iterations: z.number().int().min(1).max(100).default(20),

@@ -6,7 +6,6 @@ import {
   ProjectConfigSchema,
   AgentConfigSchema,
   ToolConfigSchema,
-  RAGCollectionConfigSchema,
   WorkflowConfigSchema,
   PromptTemplateConfigSchema,
   TestSuiteConfigSchema,
@@ -14,7 +13,6 @@ import {
   type ProjectConfig,
   type AgentConfig,
   type ToolConfig,
-  type RAGCollectionConfig,
   type WorkflowConfig,
   type PromptTemplateConfig,
   type TestSuiteConfig,
@@ -287,56 +285,12 @@ export function loadToolConfig(name: string, cwd?: string, agentName?: string): 
 }
 
 /**
- * Load RAG collection config from rag/<name>/.crystral-rag.yaml
+ * @deprecated Crystal AI no longer manages in-house RAG collections.
+ * Configure an external vector store via the `rag:` field in your agent YAML.
+ * This function throws to guide migration.
  */
-export function loadRAGCollectionConfig(name: string, cwd?: string): RAGCollectionConfig {
-  const root = findProjectRoot(cwd);
-  const ragDir = root ? path.join(root, 'rag', name) : path.join(cwd ?? process.cwd(), 'rag', name);
-  
-  // Check if directory exists
-  if (!fs.existsSync(ragDir) || !fs.statSync(ragDir).isDirectory()) {
-    throw new RAGCollectionNotFoundError(name, root ?? undefined);
-  }
-  
-  const configPath = path.join(ragDir, '.crystral-rag.yaml');
-  const configPathYml = path.join(ragDir, '.crystral-rag.yml');
-  
-  // If no config file, return defaults
-  if (!fs.existsSync(configPath) && !fs.existsSync(configPathYml)) {
-    return {
-      version: 1,
-      name,
-      embedding_provider: 'openai',
-      embedding_model: 'text-embedding-3-small',
-      chunk_size: 512,
-      chunk_overlap: 64,
-      include: ['**/*.md', '**/*.txt', '**/*.pdf'],
-      exclude: [],
-    };
-  }
-  
-  const filePath = fs.existsSync(configPath) ? configPath : configPathYml;
-  const raw = parseYamlFile(filePath);
-  
-  // Check version field exists
-  if (typeof raw === 'object' && raw !== null && !('version' in raw)) {
-    throw new ValidationError(
-      `Missing required field 'version'. Add 'version: 1' to the top of ${filePath}.`,
-      { filePath, field: 'version' }
-    );
-  }
-  
-  const config = validateSchema(RAGCollectionConfigSchema, raw, filePath);
-  
-  // Verify name matches directory name
-  if (config.name !== name) {
-    throw new ValidationError(
-      `RAG collection name '${config.name}' does not match directory name '${name}'.\nThe name field must equal the directory name.`,
-      { filePath, field: 'name', expected: name, actual: config.name }
-    );
-  }
-  
-  return config;
+export function loadRAGCollectionConfig(name: string, _cwd?: string): never {
+  throw new RAGCollectionNotFoundError(name, undefined);
 }
 
 /**

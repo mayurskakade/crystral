@@ -1,6 +1,6 @@
 import type { Message, CompletionOptions, CompletionResult } from '../types/index.js';
 import { ProviderError, RateLimitError } from '../errors/index.js';
-import { ProviderClient, buildAnthropicImageContent } from './base.js';
+import { ProviderClient, buildAnthropicImageContent, buildAnthropicDocumentContent } from './base.js';
 
 /**
  * Anthropic provider implementation
@@ -27,6 +27,14 @@ export class AnthropicProvider implements ProviderClient {
     // Vision support: convert to content blocks with images
     if (opts?.images && opts.images.length > 0) {
       formattedMessages = buildAnthropicImageContent(formattedMessages, opts.images);
+    }
+
+    // Document support: append PDF document blocks
+    if (opts?.input_blocks && opts.input_blocks.length > 0) {
+      const docBlocks = opts.input_blocks.filter(b => b.type === 'document') as import('../types/index.js').DocumentBlock[];
+      if (docBlocks.length > 0) {
+        formattedMessages = buildAnthropicDocumentContent(formattedMessages, docBlocks);
+      }
     }
 
     const requestBody: Record<string, unknown> = {
@@ -202,8 +210,12 @@ export class AnthropicProvider implements ProviderClient {
   async embed(_text: string, _model: string): Promise<number[]> {
     throw new ProviderError('anthropic', '', 0, 'Anthropic does not support embeddings');
   }
-  
-  supportsEmbeddings(): boolean {
-    return false;
-  }
+
+  supportsEmbeddings(): boolean { return false; }
+  supportsVision(): boolean { return true; }
+  supportsTranscription(): boolean { return false; }
+  supportsAudioInput(): boolean { return false; }
+  supportsTTS(): boolean { return false; }
+  supportsImageGeneration(): boolean { return false; }
+  supportsDocuments(): boolean { return true; }
 }

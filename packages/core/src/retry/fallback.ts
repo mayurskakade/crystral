@@ -1,7 +1,5 @@
-import type { Provider } from '../types/index.js';
-
 export interface FallbackEntry {
-  provider: Provider;
+  provider: string;
   model: string;
 }
 
@@ -21,7 +19,7 @@ export interface FallbackResult<T> {
 export async function withFallback<T>(
   primaryFn: () => Promise<T>,
   fallbacks: FallbackEntry[],
-  createFallbackFn: (provider: Provider, model: string) => () => Promise<T>,
+  createFallbackFn: (provider: string, model: string) => () => Promise<T>,
   primaryProvider: string,
   primaryModel: string,
 ): Promise<FallbackResult<T>> {

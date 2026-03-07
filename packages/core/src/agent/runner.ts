@@ -1,11 +1,11 @@
-import type { AgentConfig, Message, ToolDefinition, CompletionOptions, CompletionResult, ToolConfig, Provider, ImageInput } from '../types/index.js';
+import type { AgentConfig, Message, ToolDefinition, CompletionOptions, CompletionResult, ToolConfig, Provider, ImageInput, ContentBlock, MediaOutput, AudioBlock } from '../types/index.js';
 import { resolveSystemPrompt } from '../prompts/index.js';
 import { loadAgentConfig, loadToolConfig, findProjectRoot } from '../config/loader.js';
 import { resolveApiKey } from '../credentials/resolver.js';
 import { createProvider } from '../providers/index.js';
 import { SQLiteStorage, type StorageAdapter } from '../storage/adapter.js';
 import { executeTool, toOpenAIFunction, type ToolResult, type ToolContext } from '../tools/index.js';
-import { createRAGSearcher } from '../rag/index.js';
+import { createVectorStore } from '../vector-stores/index.js';
 import { MCPClientManager } from '../mcp/client.js';
 import {
   ProviderError,
@@ -18,6 +18,24 @@ import { CacheManager } from '../cache/index.js';
 import { Logger } from '../observability/logger.js';
 import { Tracer } from '../observability/tracer.js';
 import { parseOutput, buildRetryPrompt } from '../output/index.js';
+
+// ── Multimodal model routing constants ───────────────────────────────────────
+const TRANSCRIPTION_MODELS: Record<string, string> = {
+  openai: 'whisper-1',
+  groq: 'whisper-large-v3',
+  together: 'openai/whisper-large-v3',
+};
+
+const TTS_MODELS: Record<string, string> = {
+  openai: 'tts-1',
+  together: 'cartesia/sonic',
+  google: 'gemini-2.0-flash-exp',
+};
+
+const IMAGE_GEN_MODELS: Record<string, string> = {
+  openai: 'dall-e-3',
+  together: 'black-forest-labs/FLUX.1-schnell',
+};
 
 /**
  * Internal message format for provider calls
@@ -53,8 +71,14 @@ export interface AgentRunOptions {
   onToolCall?: (toolName: string, args: Record<string, unknown>) => void;
   /** Callback for tool result */
   onToolResult?: (toolName: string, result: ToolResult) => void;
-  /** Images for multimodal input */
+  /** Images for multimodal input (legacy — also works via input) */
   images?: ImageInput[];
+  /** Unified multimodal input content blocks (audio, image, document) */
+  input?: ContentBlock[];
+  /** Requested output modalities */
+  outputModalities?: Array<'text' | 'audio' | 'image'>;
+  /** TTS voice override */
+  ttsVoice?: string;
   /** Agent call stack for circular delegation detection */
   agentCallStack?: string[];
   /** Callback when an agent delegation starts */
@@ -99,6 +123,10 @@ export interface AgentRunResult {
   traceId?: string;
   /** Parsed structured output (if output config defined) */
   parsed?: unknown;
+  /** Generated media outputs (images, audio) from output modality requests */
+  media?: MediaOutput[];
+  /** Auto-transcribed text from audio input blocks */
+  transcript?: string;
 }
 
 /**
@@ -119,9 +147,9 @@ export class AgentRunner {
     // Initialize storage
     this.storage = storage ?? SQLiteStorage.getInstance();
 
-    // Initialize provider with API key
+    // Initialize provider with API key (and optional base_url for custom/proxy endpoints)
     const apiKey = resolveApiKey(config.provider);
-    this.provider = createProvider(config.provider, apiKey);
+    this.provider = createProvider(config.provider, apiKey, config.base_url);
 
     // Initialize MCP manager if MCP servers are configured
     if (config.mcp && config.mcp.length > 0) {
@@ -191,17 +219,19 @@ export class AgentRunner {
       messages.push(internalMsg);
     }
     
-    // Add RAG context if configured
+    // Add vector store context if configured
     let ragContext: string | undefined;
     if (this.config.rag) {
-      const searcher = createRAGSearcher(this.storage, this.config.rag);
-      const searchResult = await searcher.searchWithContext(userMessage, {
-        maxContextLength: 2000,
-        includeSources: true,
-      });
-      
-      if (searchResult.context) {
-        ragContext = searchResult.context;
+      const store = await createVectorStore(this.config.rag);
+      const results = await store.search(
+        userMessage,
+        this.config.rag.match_count,
+        this.config.rag.match_threshold
+      );
+      if (results.length > 0) {
+        ragContext = results
+          .map((r, i) => `[${i + 1}]${r.source ? ` Source: ${r.source}` : ''}\n${r.content}`)
+          .join('\n\n');
         messages.push({
           role: 'system',
           content: `Use the following context to help answer the user's question:\n\n${ragContext}`,
@@ -332,11 +362,79 @@ export class AgentRunner {
       completionOptions.stop_sequences = this.config.stop_sequences;
     }
 
-    // Multimodal: pass images if provided
+    // ── Modality routing ──────────────────────────────────────────────────────
+    // 1. Normalize: merge legacy options.images → ImageBlock[] + options.input → inputBlocks[]
+    const inputBlocks: ContentBlock[] = [];
     if (options?.images && options.images.length > 0) {
-      completionOptions.images = options.images;
-      logger.debug('Multimodal input', { imageCount: options.images.length });
+      for (const img of options.images) {
+        inputBlocks.push({ type: 'image', data: img.data, media_type: img.media_type });
+      }
     }
+    if (options?.input && options.input.length > 0) {
+      inputBlocks.push(...options.input);
+    }
+
+    // 2. Image routing: filter ImageBlocks → completionOptions.images (existing path)
+    const imageBlocks = inputBlocks.filter(b => b.type === 'image');
+    if (imageBlocks.length > 0) {
+      if (this.provider.supportsVision()) {
+        completionOptions.images = imageBlocks.map(b => ({ data: (b as import('../types/index.js').ImageBlock).data, media_type: (b as import('../types/index.js').ImageBlock).media_type }));
+        logger.debug('Multimodal input', { imageCount: imageBlocks.length });
+      } else {
+        logger.warn(`Provider ${this.config.provider} does not support vision — dropping ${imageBlocks.length} image(s)`);
+      }
+    }
+
+    // 3. Audio routing
+    const audioBlocks = inputBlocks.filter(b => b.type === 'audio') as AudioBlock[];
+    let transcribedText: string | undefined;
+    if (audioBlocks.length > 0) {
+      if (this.provider.supportsAudioInput()) {
+        // Native audio-in-chat
+        completionOptions.input_blocks = inputBlocks;
+        logger.debug('Native audio input', { audioCount: audioBlocks.length });
+      } else if (this.provider.supportsTranscription()) {
+        // Auto-transcribe and prepend to message
+        const transcriptModel = this.config.capabilities?.transcription_model ?? TRANSCRIPTION_MODELS[this.config.provider] ?? 'whisper-1';
+        const transcripts: string[] = [];
+        for (const ab of audioBlocks) {
+          const t = await this.provider.transcribe!(ab, transcriptModel);
+          transcripts.push(t);
+        }
+        transcribedText = transcripts.join(' ');
+        effectiveUserMessage = `[Transcribed audio]: ${transcribedText}\n\n${effectiveUserMessage}`;
+        // Update the last user message in messages array
+        for (let i = messages.length - 1; i >= 0; i--) {
+          if (messages[i]?.role === 'user') {
+            messages[i]!.content = effectiveUserMessage;
+            break;
+          }
+        }
+        logger.debug('Audio auto-transcribed', { transcript: transcribedText });
+      } else {
+        logger.warn('Provider does not support audio input or transcription; audio blocks dropped', { provider: this.config.provider });
+      }
+    }
+
+    // 4. Document routing
+    const documentBlocks = inputBlocks.filter(b => b.type === 'document') as import('../types/index.js').DocumentBlock[];
+    if (documentBlocks.length > 0) {
+      if (this.provider.supportsDocuments()) {
+        completionOptions.input_blocks = [...(completionOptions.input_blocks ?? []), ...documentBlocks];
+        logger.debug('Document input', { docCount: documentBlocks.length });
+      } else {
+        logger.warn(`Provider ${this.config.provider} does not support document inputs — dropping ${documentBlocks.length} document(s)`);
+      }
+    }
+
+    // Output modalities (from config or run options)
+    const outputModalities = options?.outputModalities ?? this.config.capabilities?.output_modalities ?? ['text'];
+    completionOptions.output_modalities = outputModalities;
+    const resolvedTtsVoice = options?.ttsVoice ?? this.config.capabilities?.tts_voice;
+    if (resolvedTtsVoice) {
+      completionOptions.tts_voice = resolvedTtsVoice;
+    }
+    // ─────────────────────────────────────────────────────────────────────────
 
     // Structured output: set response_format if output config requests JSON
     if (this.config.output?.format === 'json') {
@@ -374,7 +472,7 @@ export class AgentRunner {
         // Wrap with fallback if configured
         if (this.config.fallback && this.config.fallback.length > 0) {
           const fallbackEntries = this.config.fallback;
-          const createFallbackFn = (fbProvider: Provider, fbModel: string) => {
+          const createFallbackFn = (fbProvider: string, fbModel: string) => {
             const fbApiKey = resolveApiKey(fbProvider);
             const fbClient = createProvider(fbProvider, fbApiKey);
             const fbFn = (): Promise<CompletionResult> =>
@@ -535,6 +633,37 @@ export class AgentRunner {
       finalContent = 'Maximum tool iterations reached. Please try a simpler request.';
     }
 
+    // ── Output modality synthesis (post-tool-loop) ────────────────────────────
+    const mediaOutputs: MediaOutput[] = [];
+    if (finalContent) {
+      if (outputModalities.includes('audio') && this.provider.supportsTTS()) {
+        const ttsModel = this.config.capabilities?.tts_model ?? TTS_MODELS[this.config.provider];
+        if (ttsModel) {
+          try {
+            const audioOut = await this.provider.synthesize!(finalContent, ttsModel, completionOptions.tts_voice);
+            mediaOutputs.push(audioOut);
+            logger.debug('TTS synthesized');
+          } catch {
+            logger.warn('TTS synthesis failed');
+          }
+        }
+      }
+
+      if (outputModalities.includes('image') && this.provider.supportsImageGeneration()) {
+        const imgModel = this.config.capabilities?.image_gen_model ?? IMAGE_GEN_MODELS[this.config.provider];
+        if (imgModel) {
+          try {
+            const imgs = await this.provider.generateImage!(finalContent, imgModel);
+            mediaOutputs.push(...imgs);
+            logger.debug('Image generated', { count: imgs.length });
+          } catch {
+            logger.warn('Image generation failed');
+          }
+        }
+      }
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
     // Structured output parsing
     let parsedOutput: unknown;
     if (this.config.output && finalContent) {
@@ -643,6 +772,8 @@ export class AgentRunner {
       ...guardrailsMeta,
       ...(parsedOutput !== undefined ? { parsed: parsedOutput } : {}),
       ...(tracer ? { traceId: tracer.id } : {}),
+      ...(mediaOutputs.length > 0 ? { media: mediaOutputs } : {}),
+      ...(transcribedText !== undefined ? { transcript: transcribedText } : {}),
     };
   }
   

@@ -1,6 +1,17 @@
+// @ts-nocheck
+// This file is kept for historical reference only. It is not exported and not used.
+// Crystal AI no longer manages in-house RAG indexing — use external vector stores.
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import type { RAGCollectionConfig } from '../types/index.js';
+interface RAGCollectionConfig {
+  name: string;
+  embedding_provider: string;
+  embedding_model: string;
+  chunk_size: number;
+  chunk_overlap: number;
+  include: string[];
+  exclude: string[];
+}
 import type { StorageAdapter, Chunk } from '../storage/index.js';
 import { chunkDocument } from './chunker.js';
 import { createEmbedder } from './embedder.js';
@@ -243,12 +254,12 @@ export class RAGIndexer {
           const relativePath = path.relative(this.collectionPath, fullPath);
           
           // Check include patterns
-          const shouldInclude = includePatterns.some(pattern => 
+          const shouldInclude = includePatterns.some((pattern: string) =>
             this.matchPattern(relativePath, pattern)
           );
-          
+
           // Check exclude patterns
-          const shouldExclude = excludePatterns.some(pattern =>
+          const shouldExclude = excludePatterns.some((pattern: string) =>
             this.matchPattern(relativePath, pattern)
           );
           

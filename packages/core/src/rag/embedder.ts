@@ -1,4 +1,4 @@
-import type { Provider } from '../types/index.js';
+import type { BuiltInProvider } from '../types/index.js';
 import { createProvider } from '../providers/index.js';
 import { resolveApiKey } from '../credentials/index.js';
 
@@ -32,7 +32,7 @@ export interface BatchEmbeddingResult {
  * Embedder configuration
  */
 export interface EmbedderConfig {
-  provider: Provider;
+  provider: string;
   model: string;
 }
 
@@ -57,7 +57,7 @@ function estimateTokens(text: string): number {
 class Embedder {
   private provider: ReturnType<typeof createProvider>;
   private model: string;
-  private providerName: Provider;
+  private providerName: string;
   
   constructor(config: EmbedderConfig) {
     const apiKey = resolveApiKey(config.provider);
@@ -112,8 +112,8 @@ class Embedder {
 /**
  * Get default embedding model for a provider
  */
-export function getDefaultEmbeddingModel(provider: Provider): string {
-  const defaults: Record<Provider, string> = {
+export function getDefaultEmbeddingModel(provider: string): string {
+  const defaults: Record<BuiltInProvider, string> = {
     openai: 'text-embedding-3-small',
     anthropic: 'voyage-2', // Anthropic uses Voyage
     groq: 'text-embedding-3-small', // Groq uses OpenAI compatible

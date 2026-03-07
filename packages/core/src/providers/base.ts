@@ -1,4 +1,4 @@
-import type { Message, ToolDefinition, CompletionOptions, CompletionResult, Provider, ImageInput } from '../types/index.js';
+import type { Message, ToolDefinition, CompletionOptions, CompletionResult, BuiltInProvider, ImageInput, AudioBlock, AudioOutput, ImageOutput } from '../types/index.js';
 
 /**
  * Base provider client interface
@@ -8,21 +8,45 @@ export interface ProviderClient {
    * Complete a chat completion
    */
   complete(messages: Message[], model: string, opts?: CompletionOptions): Promise<CompletionResult>;
-  
+
   /**
    * Stream a chat completion
    */
   stream(messages: Message[], model: string, opts?: CompletionOptions): AsyncIterable<string>;
-  
+
   /**
    * Generate embeddings for text
    */
   embed(text: string, model: string): Promise<number[]>;
-  
+
   /**
    * Check if provider supports embeddings
    */
   supportsEmbeddings(): boolean;
+
+  // ── Capability flags (all providers must implement) ──────────────────────
+
+  /** Whether the provider supports image inputs in chat */
+  supportsVision(): boolean;
+  /** Whether the provider can transcribe audio to text */
+  supportsTranscription(): boolean;
+  /** Whether the provider supports native audio input in chat messages */
+  supportsAudioInput(): boolean;
+  /** Whether the provider can synthesize text to speech */
+  supportsTTS(): boolean;
+  /** Whether the provider can generate images from prompts */
+  supportsImageGeneration(): boolean;
+  /** Whether the provider supports PDF document inputs in chat */
+  supportsDocuments(): boolean;
+
+  // ── Optional action methods (check capability flag before calling) ────────
+
+  /** Transcribe an audio block to text */
+  transcribe?(audio: AudioBlock, model: string): Promise<string>;
+  /** Synthesize text to audio */
+  synthesize?(text: string, model: string, voice?: string): Promise<AudioOutput>;
+  /** Generate images from a prompt */
+  generateImage?(prompt: string, model: string, opts?: { size?: string; n?: number }): Promise<ImageOutput[]>;
 }
 
 /**
@@ -96,7 +120,7 @@ export const COST_RATES: Record<string, { input: number; output: number }> = {
  * Calculate cost based on token usage
  */
 export function calculateCost(
-  provider: Provider,
+  provider: string,
   model: string,
   inputTokens: number,
   outputTokens: number
@@ -206,9 +230,143 @@ export function buildGeminiImageParts(
 }
 
 /**
+ * Extract ImageInput[] from a ContentBlock[] (for backward-compat bridge to existing vision path).
+ */
+export function extractImages(blocks: import('../types/index.js').ContentBlock[]): ImageInput[] {
+  return blocks
+    .filter((b): b is import('../types/index.js').ImageBlock => b.type === 'image')
+    .map(b => ({ data: b.data, media_type: b.media_type }));
+}
+
+/**
+ * Extract AudioBlock[] from a ContentBlock[].
+ */
+export function extractAudioBlocks(blocks: import('../types/index.js').ContentBlock[]): import('../types/index.js').AudioBlock[] {
+  return blocks.filter((b): b is import('../types/index.js').AudioBlock => b.type === 'audio');
+}
+
+/**
+ * Build OpenAI audio-in-chat content blocks for gpt-4o-audio-preview.
+ * Appends input_audio parts to the last user message alongside existing text.
+ */
+export function buildOpenAIAudioContent(
+  messages: ProviderMessage[],
+  audioBlocks: import('../types/index.js').AudioBlock[]
+): ProviderMessage[] {
+  if (audioBlocks.length === 0) return messages;
+
+  const result = messages.map(m => ({ ...m }));
+  for (let i = result.length - 1; i >= 0; i--) {
+    const msg = result[i];
+    if (msg && msg.role === 'user') {
+      const existing = Array.isArray(msg.content)
+        ? (msg.content as unknown[])
+        : [{ type: 'text' as const, text: msg.content as string }];
+      const audioParts = audioBlocks.map(ab => ({
+        type: 'input_audio' as const,
+        input_audio: {
+          data: ab.data,
+          format: ab.media_type.replace('audio/', ''),
+        },
+      }));
+      (msg as Record<string, unknown>).content = [...existing, ...audioParts];
+      break;
+    }
+  }
+  return result;
+}
+
+/**
+ * Build Gemini inlineData audio parts for audio-in-chat.
+ * Appends audio inlineData to the last user content parts.
+ */
+export function buildGeminiAudioParts(
+  contents: Array<{ role: string; parts: unknown[] }>,
+  audioBlocks: import('../types/index.js').AudioBlock[]
+): Array<{ role: string; parts: unknown[] }> {
+  if (audioBlocks.length === 0) return contents;
+
+  const result = contents.map(c => ({ ...c, parts: [...c.parts] }));
+  for (let i = result.length - 1; i >= 0; i--) {
+    const msg = result[i];
+    if (msg && msg.role === 'user') {
+      const audioParts = audioBlocks.map(ab => ({
+        inlineData: {
+          mimeType: ab.media_type,
+          data: ab.data,
+        },
+      }));
+      msg.parts = [...msg.parts, ...audioParts];
+      break;
+    }
+  }
+  return result;
+}
+
+/**
+ * Build Anthropic-compatible content blocks for PDF document inputs.
+ * Appends document parts to the last user message.
+ */
+export function buildAnthropicDocumentContent(
+  messages: Array<{ role: string; content: unknown }>,
+  documents: import('../types/index.js').DocumentBlock[]
+): Array<{ role: string; content: unknown }> {
+  if (documents.length === 0) return messages;
+
+  const result = messages.map(m => ({ ...m }));
+  for (let i = result.length - 1; i >= 0; i--) {
+    const msg = result[i];
+    if (msg && msg.role === 'user') {
+      const existing = Array.isArray(msg.content)
+        ? (msg.content as unknown[])
+        : [{ type: 'text' as const, text: msg.content as string }];
+      const docParts = documents.map(doc => ({
+        type: 'document' as const,
+        source: {
+          type: 'base64' as const,
+          media_type: doc.media_type,
+          data: doc.data,
+        },
+        ...(doc.filename ? { title: doc.filename } : {}),
+      }));
+      msg.content = [...existing, ...docParts];
+      break;
+    }
+  }
+  return result;
+}
+
+/**
+ * Build Gemini inlineData parts for PDF document inputs.
+ * Appends document inlineData to the last user content parts.
+ */
+export function buildGeminiDocumentParts(
+  contents: Array<{ role: string; parts: unknown[] }>,
+  documents: import('../types/index.js').DocumentBlock[]
+): Array<{ role: string; parts: unknown[] }> {
+  if (documents.length === 0) return contents;
+
+  const result = contents.map(c => ({ ...c, parts: [...c.parts] }));
+  for (let i = result.length - 1; i >= 0; i--) {
+    const msg = result[i];
+    if (msg && msg.role === 'user') {
+      const docParts = documents.map(doc => ({
+        inlineData: {
+          mimeType: doc.media_type,
+          data: doc.data,
+        },
+      }));
+      msg.parts = [...msg.parts, ...docParts];
+      break;
+    }
+  }
+  return result;
+}
+
+/**
  * Provider status page URLs
  */
-export const PROVIDER_STATUS_URLS: Record<Provider, string> = {
+export const PROVIDER_STATUS_URLS: Record<BuiltInProvider, string> = {
   openai: 'https://status.openai.com/',
   anthropic: 'https://status.anthropic.com/',
   groq: 'https://groq.com/status',

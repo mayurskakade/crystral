@@ -1,4 +1,4 @@
-import type { Message, CompletionOptions, CompletionResult } from '../types/index.js';
+import type { Message, CompletionOptions, CompletionResult, AudioBlock } from '../types/index.js';
 import { ProviderError, RateLimitError } from '../errors/index.js';
 import { ProviderClient, formatMessagesForProvider, formatToolsForProvider } from './base.js';
 
@@ -160,8 +160,42 @@ export class GroqProvider implements ProviderClient {
   async embed(_text: string, _model: string): Promise<number[]> {
     throw new ProviderError('groq', '', 0, 'Groq does not support embeddings');
   }
-  
-  supportsEmbeddings(): boolean {
-    return false;
+
+  supportsEmbeddings(): boolean { return false; }
+  supportsVision(): boolean { return false; }
+  supportsTranscription(): boolean { return true; }
+  supportsAudioInput(): boolean { return false; }
+  supportsTTS(): boolean { return false; }
+  supportsImageGeneration(): boolean { return false; }
+  supportsDocuments(): boolean { return false; }
+
+  async transcribe(audio: AudioBlock, model: string): Promise<string> {
+    const mimeType = audio.media_type;
+    const ext = mimeType.replace('audio/', '') || 'mp3';
+    const binaryStr = atob(audio.data);
+    const bytes = new Uint8Array(binaryStr.length);
+    for (let i = 0; i < binaryStr.length; i++) {
+      bytes[i] = binaryStr.charCodeAt(i);
+    }
+    const blob = new Blob([bytes], { type: mimeType });
+
+    const form = new FormData();
+    form.append('file', blob, `audio.${ext}`);
+    form.append('model', model);
+
+    const response = await fetch(`${this.baseUrl}/audio/transcriptions`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${this.apiKey}` },
+      body: form,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({})) as Record<string, unknown>;
+      const msg = (errorData.error as Record<string, unknown>)?.message as string || 'Unknown error';
+      throw new ProviderError('groq', model, response.status, msg);
+    }
+
+    const data = await response.json() as Record<string, unknown>;
+    return (data.text as string) ?? '';
   }
 }

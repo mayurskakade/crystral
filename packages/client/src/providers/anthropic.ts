@@ -1,10 +1,17 @@
 import type { Message, CompletionOptions, CompletionResult } from '../types.js';
 import { ProviderError, RateLimitError } from '../errors.js';
 import type { ProviderClient } from './base.js';
-import { buildAnthropicImageContent } from './base.js';
+import { buildAnthropicImageContent, buildAnthropicDocumentContent } from './base.js';
 
 export class AnthropicProvider implements ProviderClient {
   constructor(private apiKey: string, private baseUrl = 'https://api.anthropic.com/v1') {}
+
+  supportsVision(): boolean { return true; }
+  supportsTranscription(): boolean { return false; }
+  supportsAudioInput(): boolean { return false; }
+  supportsTTS(): boolean { return false; }
+  supportsImageGeneration(): boolean { return false; }
+  supportsDocuments(): boolean { return true; }
 
   async complete(messages: Message[], model: string, opts?: CompletionOptions): Promise<CompletionResult> {
     const system = messages.find(m => m.role === 'system');
@@ -13,6 +20,10 @@ export class AnthropicProvider implements ProviderClient {
       .map(m => ({ role: m.role === 'tool' ? 'user' : m.role, content: m.content }));
 
     if (opts?.images?.length) formatted = buildAnthropicImageContent(formatted, opts.images);
+    if (opts?.input_blocks?.length) {
+      const docs = opts.input_blocks.filter(b => b.type === 'document') as import('../types.js').DocumentBlock[];
+      if (docs.length) formatted = buildAnthropicDocumentContent(formatted, docs);
+    }
 
     const body: Record<string, unknown> = {
       model, messages: formatted, max_tokens: opts?.max_tokens ?? 4096,

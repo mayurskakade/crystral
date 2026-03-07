@@ -1,6 +1,6 @@
-import type { Message, CompletionOptions, CompletionResult } from '../types/index.js';
+import type { Message, CompletionOptions, CompletionResult, AudioOutput } from '../types/index.js';
 import { ProviderError, RateLimitError } from '../errors/index.js';
-import { ProviderClient, buildGeminiImageParts } from './base.js';
+import { ProviderClient, buildGeminiImageParts, buildGeminiAudioParts, buildGeminiDocumentParts } from './base.js';
 
 /**
  * Google (Gemini) provider implementation
@@ -14,11 +14,74 @@ export class GoogleProvider implements ProviderClient {
     this.baseUrl = baseUrl ?? 'https://generativelanguage.googleapis.com/v1beta';
   }
   
+  supportsVision(): boolean { return true; }
+  supportsTranscription(): boolean { return false; }
+  supportsAudioInput(): boolean { return true; }
+  supportsTTS(): boolean { return true; }
+  supportsImageGeneration(): boolean { return false; }
+  supportsDocuments(): boolean { return true; }
+
+  /**
+   * Gemini native TTS via generateContent with responseModalities: ["AUDIO"].
+   * Uses speechConfig.voiceConfig.prebuiltVoiceConfig for voice selection.
+   * Available voices: Aoede, Charon, Fenrir, Kore, Puck.
+   * Response audio is PCM at 24000Hz returned as inlineData base64.
+   */
+  async synthesize(text: string, model: string, voice?: string): Promise<AudioOutput> {
+    const requestBody = {
+      contents: [{ role: 'user', parts: [{ text }] }],
+      generationConfig: {
+        responseModalities: ['AUDIO'],
+        speechConfig: {
+          voiceConfig: {
+            prebuiltVoiceConfig: {
+              voiceName: voice ?? 'Aoede',
+            },
+          },
+        },
+      },
+    };
+
+    const response = await fetch(
+      `${this.baseUrl}/models/${model}:generateContent?key=${this.apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody),
+      }
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({})) as Record<string, unknown>;
+      const errorMessage = (errorData.error as Record<string, unknown>)?.message as string || 'Unknown error';
+      if (response.status === 429) throw new RateLimitError('google', model);
+      throw new ProviderError('google', model, response.status, errorMessage);
+    }
+
+    const data = await response.json() as Record<string, unknown>;
+    const candidates = data.candidates as Array<Record<string, unknown>>;
+    const parts = (candidates?.[0]?.content as Record<string, unknown>)?.parts as Array<Record<string, unknown>>;
+
+    for (const part of parts ?? []) {
+      const inlineData = part.inlineData as Record<string, unknown> | undefined;
+      if (inlineData?.data) {
+        return {
+          type: 'audio',
+          data: inlineData.data as string,
+          // Gemini returns audio/pcm;rate=24000 — normalise to audio/pcm
+          media_type: ((inlineData.mimeType as string) ?? 'audio/pcm').split(';')[0] as string,
+        };
+      }
+    }
+
+    throw new ProviderError('google', model, 0, 'No audio data in Gemini TTS response');
+  }
+
   async complete(messages: Message[], model: string, opts?: CompletionOptions): Promise<CompletionResult> {
     // Convert messages to Gemini format
     const systemMessage = messages.find(m => m.role === 'system');
     const nonSystemMessages = messages.filter(m => m.role !== 'system');
-    
+
     let contents = nonSystemMessages.map(m => ({
       role: m.role === 'assistant' ? 'model' : 'user',
       parts: [{ text: m.content }] as unknown[],
@@ -27,6 +90,18 @@ export class GoogleProvider implements ProviderClient {
     // Vision support: add inlineData parts for images
     if (opts?.images && opts.images.length > 0) {
       contents = buildGeminiImageParts(contents, opts.images);
+    }
+
+    // Native audio-in-chat support (Gemini inlineData)
+    if (opts?.input_blocks && opts.input_blocks.length > 0) {
+      const audioBlocks = opts.input_blocks.filter(b => b.type === 'audio') as import('../types/index.js').AudioBlock[];
+      if (audioBlocks.length > 0) {
+        contents = buildGeminiAudioParts(contents, audioBlocks);
+      }
+      const docBlocks = opts.input_blocks.filter(b => b.type === 'document') as import('../types/index.js').DocumentBlock[];
+      if (docBlocks.length > 0) {
+        contents = buildGeminiDocumentParts(contents, docBlocks);
+      }
     }
 
     const generationConfig: Record<string, unknown> = {
@@ -228,7 +303,5 @@ export class GoogleProvider implements ProviderClient {
     return embedding?.values as number[] ?? [];
   }
   
-  supportsEmbeddings(): boolean {
-    return true;
-  }
+  supportsEmbeddings(): boolean { return true; }
 }
