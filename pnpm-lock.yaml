@@ -54,8 +54,8 @@ importers:
   examples/ad-template-generator/server:
     dependencies:
       '@crystralai/core':
-        specifier: workspace:*
-        version: link:../../../packages/core
+        specifier: ^0.4.2
+        version: 0.4.2
       '@nestjs/common':
         specifier: ^10.0.0
         version: 10.4.22(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -368,6 +368,9 @@ packages:
   '@colors/colors@1.5.0':
     resolution: {integrity: sha512-ooWCrlZP11i8GImSjTHYHLkvFDP48nS4+204nGb1RiX/WXYHmJA2III9/e2DWVabCESdW7hBAEzHRqUn9OUVvQ==}
     engines: {node: '>=0.1.90'}
+
+  '@crystralai/core@0.4.2':
+    resolution: {integrity: sha512-e6Ujzlf2B7KoX6vIFyFX9cVbWE4+k6fW6d0FiykWlhLXS2aGuxgZWd3iLdhV57VFglwEpA+QaAjtXl3hQ4qrQg==}
 
   '@emnapi/runtime@1.8.1':
     resolution: {integrity: sha512-mehfKSMWjjNol8659Z8KxEMrdSJDDot5SXMq00dM8BN4o+CLNXQ0xH2V7EchNHV4RmbZLmmPdEaXZc5H2FXmDg==}
@@ -3400,6 +3403,14 @@ snapshots:
 
   '@colors/colors@1.5.0':
     optional: true
+
+  '@crystralai/core@0.4.2':
+    dependencies:
+      better-sqlite3: 11.10.0
+      dotenv: 16.6.1
+      js-yaml: 4.1.1
+      uuid: 10.0.0
+      zod: 3.25.76
 
   '@emnapi/runtime@1.8.1':
     dependencies:
