@@ -216,12 +216,19 @@ export function buildGeminiImageParts(
   for (let i = result.length - 1; i >= 0; i--) {
     const msg = result[i];
     if (msg && msg.role === 'user') {
-      const imageParts = images.map(img => ({
-        inlineData: {
-          mimeType: img.media_type,
-          data: img.data,
-        },
-      }));
+      const imageParts = images.map((img, i) => {
+        if (!img.media_type) {
+          throw new Error(
+            `ImageInput[${i}].media_type is required for Gemini image parts (e.g. 'image/jpeg'). Got: ${JSON.stringify(img.media_type)}`,
+          );
+        }
+        return {
+          inlineData: {
+            mimeType: img.media_type,
+            data: img.data,
+          },
+        };
+      });
       msg.parts = [...msg.parts, ...imageParts];
       break;
     }
@@ -290,12 +297,19 @@ export function buildGeminiAudioParts(
   for (let i = result.length - 1; i >= 0; i--) {
     const msg = result[i];
     if (msg && msg.role === 'user') {
-      const audioParts = audioBlocks.map(ab => ({
-        inlineData: {
-          mimeType: ab.media_type,
-          data: ab.data,
-        },
-      }));
+      const audioParts = audioBlocks.map((ab, i) => {
+        if (!ab.media_type) {
+          throw new Error(
+            `AudioBlock[${i}].media_type is required for Gemini audio parts (e.g. 'audio/mp3'). Got: ${JSON.stringify(ab.media_type)}`,
+          );
+        }
+        return {
+          inlineData: {
+            mimeType: ab.media_type,
+            data: ab.data,
+          },
+        };
+      });
       msg.parts = [...msg.parts, ...audioParts];
       break;
     }
@@ -350,12 +364,19 @@ export function buildGeminiDocumentParts(
   for (let i = result.length - 1; i >= 0; i--) {
     const msg = result[i];
     if (msg && msg.role === 'user') {
-      const docParts = documents.map(doc => ({
-        inlineData: {
-          mimeType: doc.media_type,
-          data: doc.data,
-        },
-      }));
+      const docParts = documents.map((doc, i) => {
+        if (!doc.media_type) {
+          throw new Error(
+            `DocumentBlock[${i}].media_type is required for Gemini document parts (e.g. 'application/pdf'). Got: ${JSON.stringify(doc.media_type)}`,
+          );
+        }
+        return {
+          inlineData: {
+            mimeType: doc.media_type,
+            data: doc.data,
+          },
+        };
+      });
       msg.parts = [...msg.parts, ...docParts];
       break;
     }
