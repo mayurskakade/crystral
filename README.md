@@ -307,6 +307,8 @@ MCP tools are automatically discovered at runtime and prefixed with `mcp_{server
 | [Examples](docs/examples.md) | Walkthroughs for react-chat, code-review, ad-generator |
 | [Advanced](docs/advanced.md) | Structured output, retry, guardrails, caching |
 
+| [Tutorials](docs/tutorials.md) | Video curriculum: 19 guided tutorials across 4 tracks |
+
 **Technical references:** [Architecture](ARCHITECTURE.md) | [Config Specification](CONFIG_SPEC.md)
 
 ---
