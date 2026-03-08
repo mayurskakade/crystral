@@ -1,132 +1,126 @@
-# CrystalAI
+# Crystral
+
+[![npm version](https://img.shields.io/npm/v/@crystralai/core?style=flat-square&label=%40crystralai%2Fcore)](https://www.npmjs.com/package/@crystralai/core)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](https://opensource.org/licenses/MIT)
+[![Node.js: >=18](https://img.shields.io/badge/Node.js-%E2%89%A518-brightgreen?style=flat-square)](https://nodejs.org)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5%2B-blue?style=flat-square)](https://www.typescriptlang.org)
 
 **Local-first AI agent framework for developers.**
 
-Define agents as YAML files, version-control them, run them in the terminal, and inspect them in a local dashboard — with zero cloud dependency.
+Define agents as YAML files, version-control them, run them in the terminal, and inspect them in a local dashboard. API keys stay on your machine, inference calls go directly to providers, and nothing is stored in the cloud. Think of it as Prisma for AI agents.
 
-```bash
-npm install -g @crystalai/cli
+---
 
-crystalai init
-crystalai auth add openai
-crystalai create agent support
-crystalai run support "Hello!"
-crystalai studio               # opens http://localhost:4000
+## Architecture
+
+```
+                          crystral.config.yaml
+                                  |
+                                  v
+                    +----------------------------+
+                    |        Core Engine          |
+                    |  (config, credentials, DB)  |
+                    +----------------------------+
+                       /     |       |       \
+                      v      v       v        v
+                 +------+ +-----+ +-----+ +----------+
+                 |Agents| |Tools| | RAG | |Workflows |
+                 +------+ +-----+ +-----+ +----------+
+                      \      |       |        /
+                       v     v       v       v
+                    +----------------------------+
+                    |       LLM Providers         |
+                    | OpenAI  Anthropic  Groq     |
+                    | Google  Together AI         |
+                    +----------------------------+
+                                  |
+                                  v
+                    +----------------------------+
+                    |      Local Storage          |
+                    |   SQLite + sqlite-vec       |
+                    | (sessions, logs, vectors)   |
+                    +----------------------------+
 ```
 
 ---
 
-## What It Is
+## Features
 
-CrystalAI is a developer tool — closer to Prisma or Drizzle than to a SaaS platform. You define AI agents as plain YAML files, check them into git, and run them anywhere. API keys live on your machine. Inference calls go directly from your machine to AI providers. Nothing is stored in the cloud.
-
-| Feature | Description |
-|---------|-------------|
-| **YAML agents** | Define agents, tools, and RAG collections as version-controllable config files |
-| **Zero cloud** | Direct calls from your machine to OpenAI, Anthropic, Groq, Google, Together AI |
-| **Local storage** | SQLite + sqlite-vec for chat history, logs, and vector embeddings |
-| **Multi-agent workflows** | Orchestrate multiple agents with YAML-defined workflows |
-| **Agent-as-tool** | Agents can delegate tasks to other agents via the `agent` tool type |
-| **MCP client** | Connect agents to MCP servers for dynamic tool discovery (stdio + SSE) |
-| **CLI** | Interactive REPL, single-shot runs, RAG indexing, credential management |
-| **Studio** | React dashboard served locally at `localhost:4000` |
-| **TypeScript SDK** | `new Agent('name').run('message')` |
-| **Python SDK** | `Agent('name').run('message')` |
-
----
-
-## Installation
-
-### CLI (global)
-
-```bash
-npm install -g @crystalai/cli
-# or
-pnpm add -g @crystalai/cli
-```
-
-### TypeScript SDK (project)
-
-```bash
-npm install @crystalai/sdk
-```
-
-### Python SDK
-
-```bash
-pip install crystalai
-```
+| Category | Capability | Description |
+|----------|-----------|-------------|
+| **Agents** | YAML-defined | Define agents as version-controllable config files |
+| **Agents** | System prompts | Multiline prompts with `{variable}` template support |
+| **Agents** | Multi-turn sessions | SQLite-backed conversations that survive restarts |
+| **Providers** | 5 built-in | OpenAI, Anthropic, Groq, Google, Together AI |
+| **Providers** | OpenAI-compatible | Point any agent at a custom base URL (Ollama, vLLM, LM Studio) |
+| **Tools** | REST API | Call any HTTP endpoint with auth, path params, and response extraction |
+| **Tools** | JavaScript | Run sandboxed JS functions with timeout protection |
+| **Tools** | Web Search | Brave Search integration for real-time web results |
+| **Tools** | Agent delegation | Agents can call other agents as tools |
+| **RAG** | Document retrieval | Chunk, embed, and search local documents (md, txt, pdf, html) |
+| **RAG** | Vector search | sqlite-vec for fast local vector similarity search |
+| **Workflows** | Multi-agent | Orchestrate specialist agents with a single YAML file |
+| **Workflows** | LLM-driven | No explicit graphs -- the orchestrator LLM decides task routing |
+| **MCP** | Client support | Connect to MCP servers via stdio or SSE for dynamic tool discovery |
+| **Storage** | Fully local | SQLite for chat history, inference logs, and vector embeddings |
+| **Studio** | Dashboard | React-based local dashboard at `localhost:4000` |
 
 ---
 
 ## Quick Start
 
-### 1. Initialize a project
+### 1. Install
 
 ```bash
-mkdir my-project && cd my-project
-crystalai init
+npm install @crystralai/core
 ```
 
-Creates:
+### 2. Create project structure
 
 ```
 my-project/
-├── crystalai.config.yaml
+├── crystral.config.yaml
 ├── agents/
+│   └── assistant.yaml
 ├── tools/
-└── rag/
+└── .env
 ```
 
-### 2. Add your API key
+**`crystral.config.yaml`:**
+
+```yaml
+version: 1
+project: my-project
+```
+
+**`agents/assistant.yaml`:**
+
+```yaml
+version: 1
+name: assistant
+provider: openai
+model: gpt-4o
+system_prompt: |
+  You are a helpful assistant. Be concise and accurate.
+temperature: 0.7
+max_tokens: 4096
+```
+
+**`.env`:**
 
 ```bash
-crystalai auth add openai
-# > Enter your OpenAI API key: sk-...
-# Saved to ~/.crystalai/credentials
+OPENAI_API_KEY=sk-your-key-here
 ```
 
-### 3. Create and run an agent
+### 3. Run with the SDK
 
-```bash
-crystalai create agent assistant
-# Writes agents/assistant.yaml
+```typescript
+import { Crystral } from '@crystralai/sdk';
 
-crystalai run assistant "What is the capital of France?"
-# > Paris is the capital of France.
+const client = new Crystral();
+const result = await client.run('assistant', 'What is the capital of France?');
+console.log(result.content); // "Paris"
 ```
-
-### 4. Open the Studio
-
-```bash
-crystalai studio
-# Serving CrystalAI Studio at http://localhost:4000
-```
-
----
-
-## Project Layout
-
-```
-my-project/
-├── crystalai.config.yaml       # project config
-├── agents/
-│   └── support-agent.yaml      # agent definitions
-├── tools/
-│   └── get-ticket.yaml         # tool definitions
-├── workflows/
-│   └── content-pipeline.yaml   # multi-agent workflow definitions
-├── rag/
-│   └── product-docs/           # source documents (md, txt, pdf)
-│       └── api-reference.md
-├── .crystalai/                 # gitignore — local state
-│   ├── agents.db               # SQLite: chat history, logs
-│   └── rag/
-│       └── product-docs.index  # sqlite-vec vector index
-└── .env                        # project-level API key overrides
-```
-
-Global credentials: `~/.crystalai/credentials`
 
 ---
 
@@ -134,24 +128,32 @@ Global credentials: `~/.crystalai/credentials`
 
 ```yaml
 # agents/support-agent.yaml
+version: 1
 name: support-agent
 description: Customer support agent
 provider: openai
 model: gpt-4o
 system_prompt: |
-  You are a helpful support agent.
-temperature: 0.7
-max_tokens: 4096
+  You are a helpful support agent for {company_name}.
+temperature: 0.3
+max_tokens: 2048
 tools:
   - get-ticket
+  - send-email
 rag:
-  - product-docs
+  collections:
+    - product-docs
+  embedding_provider: openai
+  embedding_model: text-embedding-3-small
+  match_threshold: 0.75
+  match_count: 5
 ```
 
 ## Tool Definition
 
 ```yaml
 # tools/get-ticket.yaml
+version: 1
 name: get-ticket
 description: Fetch a support ticket by ID
 type: rest_api
@@ -164,32 +166,10 @@ parameters:
   - name: ticket_id
     type: string
     required: true
-```
-
-## Agent Tool (Delegation)
-
-Agents can delegate tasks to other agents using the `agent` tool type:
-
-```yaml
-# tools/delegate-research.yaml
-version: 1
-name: delegate-research
-description: Delegates research tasks to the research specialist
-type: agent
-agent_name: researcher
-pass_context: true
-timeout_ms: 120000
-max_iterations: 10
-parameters:
-  - name: task
-    type: string
-    required: true
-    description: The research task to perform
+    description: The ticket ID to fetch
 ```
 
 ## Workflow Definition
-
-Orchestrate multiple agents with a single YAML file:
 
 ```yaml
 # workflows/content-pipeline.yaml
@@ -211,9 +191,6 @@ agents:
   - name: researcher
     agent: research-agent
     description: Gathers information from the web
-  - name: analyst
-    agent: analysis-agent
-    description: Analyzes data and extracts insights
   - name: writer
     agent: writing-agent
     description: Writes polished final content
@@ -222,6 +199,68 @@ context:
   shared_memory: true
   max_context_tokens: 8000
 ```
+
+---
+
+## TypeScript SDK
+
+```typescript
+import { Crystral } from '@crystralai/sdk';
+
+const client = new Crystral();
+
+// Single-shot
+const result = await client.run('support-agent', 'Hello!');
+
+// Streaming
+const result2 = await client.run('support-agent', 'Hello!', {
+  stream: true,
+  onToken: (token) => process.stdout.write(token),
+});
+
+// Sessions (persistent history)
+const r1 = await client.run('support-agent', 'First message');
+const r2 = await client.run('support-agent', 'Follow-up', {
+  sessionId: r1.sessionId,
+});
+
+// Workflows
+const workflow = client.loadWorkflow('content-pipeline');
+const result3 = await workflow.run('Write an article about AI');
+console.log(result3.content);
+console.log(result3.agentResults);
+```
+
+## Browser / Edge Client
+
+For frontend applications, React Native, or edge runtimes, use `@crystralai/client` -- a zero-dependency package that works anywhere `fetch` does:
+
+```typescript
+import { CrystralClient } from '@crystralai/client';
+
+const client = new CrystralClient({
+  provider: 'openai',
+  model: 'gpt-4o',
+  apiKey: userProvidedKey,
+  systemPrompt: 'You are a helpful assistant.',
+});
+
+const result = await client.run('What is the capital of France?');
+```
+
+---
+
+## Supported Providers
+
+| Provider | Chat | Embeddings | Environment Variable |
+|----------|------|------------|----------------------|
+| OpenAI | gpt-4o, gpt-4-turbo, gpt-3.5-turbo | text-embedding-3-small/large | `OPENAI_API_KEY` |
+| Anthropic | claude-opus-4, claude-sonnet-4, claude-haiku | -- | `ANTHROPIC_API_KEY` |
+| Groq | llama-3, mixtral, gemma | -- | `GROQ_API_KEY` |
+| Google | gemini-1.5-pro, gemini-1.5-flash | text-embedding-004 | `GOOGLE_API_KEY` |
+| Together AI | llama-3, mistral, qwen | -- | `TOGETHER_API_KEY` |
+
+---
 
 ## MCP Servers
 
@@ -249,125 +288,53 @@ MCP tools are automatically discovered at runtime and prefixed with `mcp_{server
 
 ---
 
-## TypeScript SDK
+## Documentation
 
-```typescript
-import { Crystral } from '@crystralai/sdk'
+| Guide | Description |
+|-------|-------------|
+| [Getting Started](docs/getting-started.md) | Installation, first agent, first run |
+| [Configuration](docs/configuration.md) | Project config, file discovery, credentials, directory conventions |
+| [Agents](docs/agents.md) | Full agent YAML specification, all fields, examples |
+| [Tools](docs/tools.md) | REST API, JavaScript, web search, and agent tool types |
+| [Workflows](docs/workflows.md) | Multi-agent orchestration and strategies |
+| [RAG](docs/rag.md) | Collections, document indexing, vector search |
+| [MCP](docs/mcp.md) | MCP client, stdio/SSE transports, tool discovery |
+| [Providers](docs/providers.md) | LLM providers, credentials, model selection |
+| [SDK](docs/sdk.md) | Server-side TypeScript SDK (`@crystralai/sdk`) |
+| [Client](docs/client.md) | Browser SDK with BYOK, zero dependencies |
+| [Studio](docs/studio.md) | Local React dashboard for testing and inspection |
+| [CLI Reference](docs/cli-reference.md) | All CLI commands and flags |
+| [Examples](docs/examples.md) | Walkthroughs for react-chat, code-review, ad-generator |
+| [Advanced](docs/advanced.md) | Structured output, retry, guardrails, caching |
 
-const client = new Crystral()
-
-// Single-shot
-const result = await client.run('support-agent', 'Hello!')
-
-// Streaming
-const result2 = await client.run('support-agent', 'Hello!', {
-  stream: true,
-  onToken: (token) => process.stdout.write(token),
-})
-
-// Sessions (persistent history)
-const r1 = await client.run('support-agent', 'First message')
-const r2 = await client.run('support-agent', 'Follow-up', {
-  sessionId: r1.sessionId,
-})
-
-// Agent delegation callbacks
-const r3 = await client.run('orchestrator', 'Analyze this data', {
-  onAgentDelegation: (parent, target, task) => {
-    console.log(`${parent} → ${target}: ${task}`)
-  },
-})
-
-// Workflows
-const workflow = client.loadWorkflow('content-pipeline')
-const result3 = await workflow.run('Write an article about AI')
-console.log(result3.content)
-console.log(result3.agentResults) // per-agent call stats
-```
-
-## Python SDK
-
-```python
-from crystalai import Agent, RAGCollection, Tool
-
-# Single-shot
-agent = Agent('support-agent')
-response = agent.run('Hello!')
-
-# Async
-response = await agent.run_async('Hello!')
-
-# Streaming
-for chunk in agent.stream('Hello!'):
-    print(chunk, end='', flush=True)
-
-# RAG
-docs = RAGCollection('product-docs')
-docs.index()
-results = docs.search('how to reset password')
-```
+**Technical references:** [Architecture](ARCHITECTURE.md) | [Config Specification](CONFIG_SPEC.md)
 
 ---
 
-## Supported Providers
+## Packages
 
-| Provider | Chat | Embeddings |
-|----------|------|------------|
-| OpenAI | gpt-4o, gpt-4-turbo, gpt-3.5-turbo | text-embedding-3-small/large |
-| Anthropic | claude-opus-4, claude-sonnet-4, claude-haiku | — |
-| Groq | llama-3, mixtral, gemma | — |
-| Google | gemini-1.5-pro, gemini-1.5-flash | text-embedding-004 |
-| Together AI | llama-3, mistral, qwen | — |
-
----
-
-## CLI Reference
-
-```bash
-# Setup
-crystalai init                         # scaffold project
-crystalai auth add <provider>          # save API key globally
-crystalai auth list                    # show configured providers
-crystalai auth remove <provider>       # remove a credential
-
-# Create
-crystalai create agent <name>          # write agents/<name>.yaml
-crystalai create tool <name>           # write tools/<name>.yaml
-crystalai create rag <name>            # create rag/<name>/ directory
-
-# Run
-crystalai run <agent>                  # interactive REPL
-crystalai run <agent> "message"        # single-shot
-
-# RAG
-crystalai rag index <collection>       # embed documents
-crystalai rag search <collection> <q>  # test semantic search
-
-# Inspect
-crystalai list                         # show all agents, tools, collections
-crystalai logs                         # recent inference logs
-crystalai logs --agent <name>          # filter by agent
-
-# Studio
-crystalai studio                       # open dashboard at localhost:4000
-crystalai studio --port 3000           # custom port
-```
+| Package | Description | npm |
+|---------|-------------|-----|
+| [`@crystralai/core`](packages/core) | Runtime engine -- providers, storage, agent runner, RAG, tools | [![npm](https://img.shields.io/npm/v/@crystralai/core?style=flat-square)](https://www.npmjs.com/package/@crystralai/core) |
+| [`@crystralai/sdk`](packages/sdk) | TypeScript SDK for server-side applications | [![npm](https://img.shields.io/npm/v/@crystralai/sdk?style=flat-square)](https://www.npmjs.com/package/@crystralai/sdk) |
+| [`@crystralai/client`](packages/client) | Universal client for browsers, React Native, and edge runtimes | [![npm](https://img.shields.io/npm/v/@crystralai/client?style=flat-square)](https://www.npmjs.com/package/@crystralai/client) |
+| [`@crystralai/studio`](packages/studio) | React dashboard served locally by the CLI | -- |
 
 ---
 
 ## Monorepo Structure
 
 ```
-crystalai/
+crystral/
 ├── packages/
-│   ├── core/     @crystalai/core   — runtime engine (providers, storage, agent runner, RAG, tools)
-│   ├── cli/      @crystalai/cli    — CLI commands + local HTTP server for Studio
-│   ├── studio/   @crystalai/studio — React dashboard (served by CLI)
-│   └── sdk/      @crystalai/sdk    — public TypeScript SDK
-└── python/       crystalai         — Python package + CLI
+│   ├── core/      @crystralai/core    -- runtime engine
+│   ├── sdk/       @crystralai/sdk     -- TypeScript SDK
+│   ├── client/    @crystralai/client   -- universal browser/edge client
+│   └── studio/    @crystralai/studio  -- React dashboard
+├── docs/                              -- documentation
+├── ARCHITECTURE.md                    -- technical deep-dive
+└── CONFIG_SPEC.md                     -- YAML schema specification
 ```
-
-See [ARCHITECTURE.md](./ARCHITECTURE.md) for deep technical details.
 
 ---
 
@@ -375,28 +342,28 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md) for deep technical details.
 
 API keys are resolved in this order (highest priority first):
 
-1. `process.env` — environment variable already set (e.g. `OPENAI_API_KEY`)
-2. Project `.env` — `<project-root>/.env`
-3. Global credentials — `~/.crystalai/credentials`
+1. **Environment variable** -- e.g. `OPENAI_API_KEY` already set in the process
+2. **Project `.env` file** -- `<project-root>/.env`
+3. **Global credentials** -- `~/.crystalai/credentials`
 
 ```bash
 # These are all equivalent:
 export OPENAI_API_KEY=sk-...
 echo "OPENAI_API_KEY=sk-..." >> .env
-crystalai auth add openai
 ```
 
 ---
 
 ## Roadmap
 
-- [x] Agent-to-agent delegation — agents can call other agents as tools
-- [x] Multi-agent workflows — YAML-defined orchestration with specialist agents
-- [x] MCP client — dynamic tool discovery from MCP servers (stdio + SSE)
-- [ ] MCP server mode (`crystalai mcp`) — expose agents via MCP to Cursor/Claude Desktop
+- [x] Agent-to-agent delegation -- agents can call other agents as tools
+- [x] Multi-agent workflows -- YAML-defined orchestration with specialist agents
+- [x] MCP client -- dynamic tool discovery from MCP servers (stdio + SSE)
+- [x] Universal browser client -- `@crystralai/client` with zero dependencies
+- [x] Multimodal support -- vision inputs for compatible models
+- [ ] MCP server mode -- expose agents via MCP to Cursor/Claude Desktop
 - [ ] Web UI agent builder
 - [ ] Docker image
-- [ ] npm `create crystalai` scaffolding command
 
 ---
 
